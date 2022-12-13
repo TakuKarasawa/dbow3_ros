@@ -57,8 +57,10 @@ public:
 	float getEffectiveLevels() const;
 	virtual inline cv::Mat getWord(WordId wid) const;
 	virtual inline WordValue getWordWeight(WordId wid) const;
-  	inline WeightingType getWeightingType() const;
-	inline ScoringType getScoringType() const;
+  	// inline WeightingType getWeightingType();
+	// inline ScoringType getScoringType();
+	WeightingType getWeightingType();
+	ScoringType getScoringType();
 	inline void setWeightingType(WeightingType type);
  	void setScoringType(ScoringType type);
   
@@ -74,6 +76,9 @@ public:
 
   	void toStream(std::ostream& str,bool compressed=true) const;
   	void fromStream(std::istream& str);
+
+	// for debug
+	void get_info();
 
 protected:
 	// reference to descriptor
@@ -126,7 +131,7 @@ protected:
 	void setNodeWeights(const std::vector<std::vector<cv::Mat>>& features);	
 	void load_fromtxt(const std::string& file_name);
 
-	friend std::ostream& operator<<(std::ostream& os,const Vocabulary& voc);
+	// friend std::ostream& operator<<(std::ostream& os,const Vocabulary& voc);
 
 protected:
 	// Branching factor

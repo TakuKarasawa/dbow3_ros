@@ -86,6 +86,7 @@ double DescriptorsManipulator::distance(const cv::Mat& a,const cv::Mat& b)
     }
 }
 
+/*
 uint32_t DescriptorsManipulator::distance_8uc1(const cv::Mat& a,const cv::Mat& b)
 {
 	const uint64_t* pa;
@@ -104,6 +105,9 @@ uint32_t DescriptorsManipulator::distance_8uc1(const cv::Mat& a,const cv::Mat& b
 	}
     return ret;
 }
+*/
+
+static inline uint32_t distance_8uc1(const cv::Mat& a,const cv::Mat& b);
 
 std::string DescriptorsManipulator::toString(const cv::Mat& a)
 {

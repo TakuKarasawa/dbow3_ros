@@ -310,19 +310,6 @@ void Database::load(const cv::FileStorage& fs,const std::string& name)
 	}
 }
 
-std::ostream& operator<<(std::ostream& os,const Database& db)
-{
-	os << "Database: Entries = " << db.size() 
-	   << ", " "Using direct index = " << (db.usingDirectIndex() ? "yes" : "no");
-	
-	if(db.usingDirectIndex()){
-		os << ", Direct index levels = " << db.getDirectIndexLevels();
-	}
-	
-	os << ". " << *db.getVocabulary();
-	return os;
-}
-
 void Database::queryL1(const BowVector& vec,QueryResults& ret,int max_results,int max_id) const
 {
 	BowVector::const_iterator vit;
@@ -625,4 +612,34 @@ void Database::queryDotProduct(const BowVector& vec,QueryResults& ret,int max_re
 	
 	// cut vector
 	if(max_results > 0 && (int)ret.size() > max_results) ret.resize(max_results);
+}
+
+/*
+std::ostream& operator<<(std::ostream& os,const Database& db)
+{
+	os << "Database: Entries = " << db.size() 
+	   << ", " "Using direct index = " << (db.usingDirectIndex() ? "yes" : "no");
+	
+	if(db.usingDirectIndex()){
+		os << ", Direct index levels = " << db.getDirectIndexLevels();
+	}
+	
+	os << ". " << *db.getVocabulary();
+	return os;
+}
+*/
+
+// for debug
+void Database::get_info()
+{
+	std::cout << "Database: Entries = " << size() << std::endl;
+	
+	if(usingDirectIndex()){
+		std::cout << "Using direct index = yes" << std::endl;
+		std::cout << "Direct index levels = " << getDirectIndexLevels();
+	}
+	else std::cout << "Using direct index = no" << std::endl;
+	std::cout << std::endl;
+
+	m_voc->get_info();
 }

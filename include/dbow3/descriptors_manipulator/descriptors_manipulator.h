@@ -25,6 +25,26 @@ public:
 
 private:
 };
+
+uint32_t DescriptorsManipulator::distance_8uc1(const cv::Mat& a,const cv::Mat& b)
+{
+	const uint64_t* pa;
+	const uint64_t* pb;
+	pa = a.ptr<uint64_t>();
+	pb = b.ptr<uint64_t>();
+	
+	uint64_t v, ret = 0;
+	int n = a.cols/sizeof(uint64_t);
+	for(size_t i = 0; i < n; i++, pa++, pb++){
+		v = *pa ^ *pb;
+        v = v - ((v >> 1) & (uint64_t)~(uint64_t)0/3);
+        v = (v & (uint64_t)~(uint64_t)0/15*3) + ((v >> 2) & (uint64_t)~(uint64_t)0/15*3);
+        v = (v + (v >> 4)) & (uint64_t)~(uint64_t)0/255*15;
+    	ret += (uint64_t)(v * ((uint64_t)~(uint64_t)0/255)) >> (sizeof(uint64_t) - 1) * CHAR_BIT;
+	}
+    return ret;
+}
+
 }	// namespace dbow3 
 
 #endif	// DESCRIPTORS_MANIPLATOR_H_

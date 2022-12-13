@@ -39,8 +39,30 @@ catkin_package(
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+add_library(DBoW SHARED
+    dbow3/descriptors_manipulator.cpp
+    dbow3/feature_vector.cpp
+    dbow3/scoring_object.cpp
+    dbow3/quicklz.cpp
+    dbow3/vocabulary.cpp
+    dbow3/query_results.cpp
+    dbow3/bow_vector.cpp
+    dbow3/database.cpp
 )
 
 # dbow3_ros
 add_executable(dbow3_ros src/dbow3_ros.cpp)
 target_link_libraries(dbow3_ros ${catkin_LIBRARIES})
+
+# dbow3_demo
+add_executable(dbow3_demo 
+    src/dbow3_demo.cpp
+)
+target_link_libraries(dbow3_demo 
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    DBoW
+)

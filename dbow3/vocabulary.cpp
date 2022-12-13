@@ -336,12 +336,24 @@ WordValue Vocabulary::getWordWeight(WordId wid) const
 	return m_words[wid]->weight;
 }
 
-inline WeightingType Vocabulary::getWeightingType() const 
+/*
+inline WeightingType Vocabulary::getWeightingType()
 { 
 	return m_weighting; 
 }
 
-inline ScoringType Vocabulary::getScoringType() const 
+inline ScoringType Vocabulary::getScoringType()
+{ 
+	return m_scoring; 
+}
+*/
+
+WeightingType Vocabulary::getWeightingType()
+{ 
+	return m_weighting; 
+}
+
+ScoringType Vocabulary::getScoringType()
 { 
 	return m_scoring; 
 }
@@ -1098,6 +1110,7 @@ void Vocabulary::load_fromtxt(const std::string& file_name)
     }
 }
 
+/*
 std::ostream& operator<<(std::ostream& os,const Vocabulary& voc)
 {
 	os << "Vocabulary: k = " << voc.getBranchingFactor()
@@ -1153,4 +1166,63 @@ std::ostream& operator<<(std::ostream& os,const Vocabulary& voc)
 	
 	os << ", Number of words = " << voc.size();
 	return os;
+}
+*/
+
+void Vocabulary::get_info()
+{
+	std::cout << "k = " << getBranchingFactor() << std::endl;
+	std::cout << "L = " << getDepthLevels() << std::endl;
+	
+	std::cout << "Weighting = ";
+	switch(getWeightingType())
+	{
+		case TF_IDF: 
+			std::cout << "tf-idf" << std::endl;
+			break;
+
+    	case TF: 
+			std::cout << "tf" << std::endl; 
+			break;
+
+    	case IDF: 
+			std::cout << "idf" << std::endl;
+			break;
+		
+		case BINARY: 
+			std::cout << "binary" << std::endl;
+			break;
+  	}
+
+	std::cout << "Scoring = ";
+	switch(getDescritorType())
+	{
+		case L1_NORM: 
+			std::cout << "L1-norm" << std::endl;
+			break;
+		
+		case L2_NORM: 
+			std::cout << "L2-norm" << std::endl;
+			break;
+		
+		case CHI_SQUARE: 
+			std::cout << "Chi square distance" << std::endl;
+			break;
+		
+		case KL: 
+			std::cout << "KL-divergence" << std::endl;
+			break;
+		
+		case BHATTACHARYYA: 
+			std::cout << "Bhattacharyya coefficient" << std::endl;
+			break;
+		
+		case DOT_PRODUCT: 
+			std::cout << "Dot product" << std::endl;
+			break;
+  	}
+	
+	std::cout << "Number of words = " << size() << std::endl;
+	std::cout << std::endl;
+
 }

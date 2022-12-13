@@ -17,7 +17,7 @@
 namespace dbow3
 {
 // For query functions
-static int MIN_COMMON_WORDS = 5;
+const int MIN_COMMON_WORDS = 5;
 
 class Database
 {
@@ -59,7 +59,10 @@ public:
 	void load(const std::string& file_name);
 	virtual void load(const cv::FileStorage& fs,const std::string& name = "database");
 	
-	friend std::ostream& operator<<(std::ostream os,const Database& db);
+	// for debug
+	void get_info();
+
+	// friend std::ostream& operator<<(std::ostream os,const Database& db);
 
 protected:
 	// Query with L1 scoring
