@@ -6,11 +6,11 @@ namespace dbow3
 // Weighting type
 enum WeightingType
 {
-	TF_IDF,
-	TF,
-	IDF,
-	BINARY
+    TF_IDF,
+    TF,
+    IDF,
+    BINARY
 };
-}
+}   // namespace dbow3
 
-#endif	// WEIGHTING_TYPE_H_
+#endif  // WEIGHTING_TYPE_H_

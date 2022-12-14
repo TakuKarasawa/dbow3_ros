@@ -4,7 +4,7 @@ using namespace dbow3;
 
 void DescriptorsManipulator::mean_value(const std::vector<cv::Mat>& descriptors,cv::Mat& mean)
 {
-	if(descriptors.empty()) return;
+    if(descriptors.empty()) return;
 
     if(descriptors.size() == 1){
         mean = descriptors[0].clone();
@@ -14,7 +14,7 @@ void DescriptorsManipulator::mean_value(const std::vector<cv::Mat>& descriptors,
     // binary descriptor
     if(descriptors[0].type() == CV_8U){
         // determine number of bytes of the binary descriptor
-		int L= get_desc_size_bytes(descriptors[0]);
+        int L= get_desc_size_bytes(descriptors[0]);
         std::vector<int> sum(L*8,0);
 
         for(size_t i = 0; i < descriptors.size(); i++){
@@ -58,22 +58,22 @@ void DescriptorsManipulator::mean_value(const std::vector<cv::Mat>& descriptors,
 
 double DescriptorsManipulator::distance(const cv::Mat& a,const cv::Mat& b)
 {
-	// binary descriptor
+    // binary descriptor
     if(a.type() == CV_8U){
-		const uint64_t* pa;
-		const uint64_t* pb;
-		pa = a.ptr<uint64_t>(); 
+        const uint64_t* pa;
+        const uint64_t* pb;
+        pa = a.ptr<uint64_t>();
         pb = b.ptr<uint64_t>();
-		
-		uint64_t v, ret = 0;
+
+        uint64_t v, ret = 0;
         for(size_t i = 0; i < a.cols/sizeof(uint64_t); i++, pa++, pb++){
-			v = *pa ^ *pb;
-           	v = v - ((v >> 1) & (uint64_t)~(uint64_t)0/3);
-           	v = (v & (uint64_t)~(uint64_t)0/15*3) + ((v >> 2) & (uint64_t)~(uint64_t)0/15*3);
-           	v = (v + (v >> 4)) & (uint64_t)~(uint64_t)0/255*15;
-           	ret += (uint64_t)(v * ((uint64_t)~(uint64_t)0/255)) >> (sizeof(uint64_t) - 1) * CHAR_BIT;
+            v = *pa ^ *pb;
+            v = v - ((v >> 1) & (uint64_t)~(uint64_t)0/3);
+            v = (v & (uint64_t)~(uint64_t)0/15*3) + ((v >> 2) & (uint64_t)~(uint64_t)0/15*3);
+            v = (v + (v >> 4)) & (uint64_t)~(uint64_t)0/255*15;
+            ret += (uint64_t)(v*((uint64_t)~(uint64_t)0/255)) >> (sizeof(uint64_t) - 1)*CHAR_BIT;
         }
-		return ret;
+        return ret;
     }
     else{
         double sqd = 0.;
@@ -95,11 +95,11 @@ std::string DescriptorsManipulator::to_string(const cv::Mat& a)
     ss << a.type() << " " << a.cols <<" ";
 
     if(a.type() == CV_8U){
-		const unsigned char* p = a.ptr<unsigned char>();
+        const unsigned char* p = a.ptr<unsigned char>();
         for(int i = 0; i < a.cols; i++, p++) ss << (int)*p << " ";
     }
-	else{
-		const float* p = a.ptr<float>();
+    else{
+        const float* p = a.ptr<float>();
         for(int i = 0; i < a.cols; i++, p++) ss <<  *p << " ";
     }
     return ss.str();
@@ -109,29 +109,29 @@ void DescriptorsManipulator::from_string(cv::Mat& a,const std::string& s)
 {
     // check if the dbow3 is present
     std::string ss_aux;
-	ss_aux.reserve(10);
+    ss_aux.reserve(10);
     for(size_t i = 0; i < 10 && i < s.size(); i++) ss_aux.push_back(s[i]);
     if(ss_aux.find("dbw3") == std::string::npos){
-		std::stringstream ss(s);
+        std::stringstream ss(s);
         int val;
         std::vector<uchar> data;
-		data.reserve(100);
-        
-		while(ss >> val) data.emplace_back(val);
-        
-		// copy to a
+        data.reserve(100);
+
+        while(ss >> val) data.emplace_back(val);
+
+        // copy to a
         a.create(1,data.size(),CV_8UC1);
         memcpy(a.ptr<char>(0),&data[0],data.size());
     }
     else{
-		char szSign[10];
+        char szSign[10];
         int type, cols;
-        
-		std::stringstream ss(s);
+
+        std::stringstream ss(s);
         ss >> szSign >> type >> cols;
         a.create(1,cols,type);
-        
-		if(type == CV_8UC1){
+
+        if(type == CV_8UC1){
             unsigned char* p = a.ptr<unsigned char>();
             int n;
             for(int i = 0; i <  a.cols; i++, p++) if(ss >> n) *p = (unsigned char)n;

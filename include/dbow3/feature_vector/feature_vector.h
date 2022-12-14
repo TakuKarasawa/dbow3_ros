@@ -13,13 +13,13 @@ namespace dbow3
 class FeatureVector : public std::map<unsigned int,std::vector<unsigned int>>
 {
 public:
-	FeatureVector();
-	~FeatureVector();
-	
-	void add_feature(unsigned int id,unsigned int i_feature);
-	friend std::ostream& operator<<(std::ostream& out,const FeatureVector& fv);
-    
-};
-}	// namespace dbow3
+    FeatureVector();
+    ~FeatureVector();
 
-#endif	// FEATURE_VECTOR_H_
+    void add_feature(unsigned int id,unsigned int i_feature);
+    friend std::ostream& operator<<(std::ostream& out,const FeatureVector& fv);
+
+};
+}   // namespace dbow3
+
+#endif  // FEATURE_VECTOR_H_

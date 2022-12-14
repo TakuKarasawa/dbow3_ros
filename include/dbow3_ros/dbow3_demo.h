@@ -17,28 +17,28 @@ namespace dbow3
 class DBoW3Demo
 {
 public:
-	DBoW3Demo();
-	void process();
+    DBoW3Demo();
+    void process();
 
 private:
-	void set_detector_mode(std::string mode);
-	void create_vocabulary(const std::vector<cv::Mat>& features);
-	void create_database(std::vector<cv::Mat>& features);
-	std::vector<cv::Mat> load_features();
+    void set_detector_mode(std::string mode);
+    void create_vocabulary(const std::vector<cv::Mat>& features);
+    void create_database(std::vector<cv::Mat>& features);
+    std::vector<cv::Mat> load_features();
 
-	// node handler
-	ros::NodeHandle nh_;
-	ros::NodeHandle private_nh_;
+    // node handler
+    ros::NodeHandle nh_;
+    ros::NodeHandle private_nh_;
 
-	// detector
-	cv::Ptr<cv::Feature2D> detector_;
+    // detector
+    cv::Ptr<cv::Feature2D> detector_;
 
-	// buffer
-	std::string file_path_;
+    // buffer
+    std::string file_path_;
 
-	// param
-	std::string DIR_PATH_;
+    // param
+    std::string DIR_PATH_;
 };
 }
 
-#endif	// DBOW3_DEMO_H_
+#endif  // DBOW3_DEMO_H_

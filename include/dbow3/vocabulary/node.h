@@ -11,23 +11,23 @@ namespace dbow3
 class Node
 {
 public:
-	Node() : 
-		id(0), weight(0), parent(0), word_id(0) {}
+    Node() :
+        id(0), weight(0), parent(0), word_id(0) {}
 
-    Node(unsigned int _id) : 
-		id(_id), weight(0), parent(0), word_id(0) {}
-		
-	inline bool is_leaf() const { return children.empty(); }
+    Node(unsigned int _id) :
+        id(_id), weight(0), parent(0), word_id(0) {}
 
-	unsigned int id;					// Node id
-	double weight;						// Weight if the node is a word
-	std::vector<unsigned int> children;	// Children 	
-	unsigned int parent;				// Parent node (undefined in case of root)
-	cv::Mat descriptor;					// Node descriptor	
-	unsigned int word_id;				// Word id if the node is a word
+    inline bool is_leaf() const { return children.empty(); }
+
+    unsigned int id;                    // Node id
+    double weight;                      // Weight if the node is a word
+    std::vector<unsigned int> children; // Children
+    unsigned int parent;                // Parent node (undefined in case of root)
+    cv::Mat descriptor;                 // Node descriptor
+    unsigned int word_id;               // Word id if the node is a word
 
 private:
 };
-}
+}   // namespace dbow3
 
-#endif	// NODE_H_
+#endif  // NODE_H_

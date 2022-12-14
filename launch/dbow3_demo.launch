@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-	
-	<!-- dbow3_demo -->
-	<node pkg="dbow3_ros" type="dbow3_demo" name="dbow3_demo" output="screen" >
+
+    <!-- dbow3_demo -->
+    <node pkg="dbow3_ros" type="dbow3_demo" name="dbow3_demo" output="screen" >
         <!-- params -->
-		<param name="DIR_PATH" value="$(find dbow3_ros)/images/" />
-	</node>
+        <param name="DIR_PATH" value="$(find dbow3_ros)/images/" />
+    </node>
 
 </launch>
