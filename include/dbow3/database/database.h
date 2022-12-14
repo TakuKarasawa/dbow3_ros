@@ -13,6 +13,7 @@
 #include "dbow3/scoring_object/scoring_object.h"
 #include "dbow3/bow_vector/bow_vector.h"
 #include "dbow3/feature_vector/feature_vector.h"
+#include "dbow3/database/if_item.h"
 
 namespace dbow3
 {
@@ -38,9 +39,9 @@ public:
 	void allocate(int nd = 0,int ni = 0);
 	
 	// add
-	EntryId add(const cv::Mat& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
-	EntryId add(const std::vector<cv::Mat>& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
-	EntryId add(const BowVector& vec,const FeatureVector& fec = FeatureVector());
+	unsigned int add(const cv::Mat& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
+	unsigned int add(const std::vector<cv::Mat>& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
+	unsigned int add(const BowVector& vec,const FeatureVector& fec = FeatureVector());
 	
 	void clear();
 	unsigned int size() const{  return m_nentries;}
@@ -51,7 +52,7 @@ public:
   	void query(const std::vector<cv::Mat>& features,QueryResults& ret,int max_results = 1,int max_id = -1) const;
 	void query(const BowVector& vec,QueryResults& ret,int max_results = 1,int max_id = -1) const;
 
-  	const FeatureVector& retrieveFeatures(EntryId id) const;
+  	const FeatureVector& retrieveFeatures(unsigned int id) const;
 
   	void save(const std::string& file_name) const;
 	virtual void save(cv::FileStorage& fs,const std::string& name = "database") const;
@@ -82,36 +83,7 @@ protected:
 	
 	// Query with dot product scoring
   	void queryDotProduct(const BowVector& vec,QueryResults& ret,int max_results,int max_id) const;
-
-protected:
-	// Item of IFRow
-  	struct IFPair
-  	{
-		IFPair() {}
-		IFPair(EntryId eid,WordValue wv) : 
-			entry_id(eid), word_weight(wv) {}
-		
-		inline bool operator==(EntryId eid) const 
-		{ 
-			return entry_id == eid; 
-		}
-
-		// Entry id
-    	EntryId entry_id;
-		
-		// Word weight in this entry
-    	WordValue word_weight;
-  	};
 	
-	// Row of InvertedFile
-  	typedef std::list<IFPair> IFRow;
-	
-	// Inverted index
-  	typedef std::vector<IFRow> InvertedFile; 
-	
-	// Direct index
-  	typedef std::vector<FeatureVector> DirectFile;
-
 protected:
 	// Associated vocabulary
   	Vocabulary *m_voc;
@@ -123,10 +95,10 @@ protected:
   	int m_dilevels;
 	
 	// Inverted file (must have size() == |words|)
-  	InvertedFile m_ifile;
+  	std::vector<std::list<IFItem>> m_ifile;
 	
 	// Direct file (resized for allocation)
-  	DirectFile m_dfile;
+  	std::vector<FeatureVector> m_dfile;
 	
 	// Number of valid entries in m_dfile
   	int m_nentries;  
