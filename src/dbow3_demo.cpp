@@ -3,13 +3,15 @@
 using namespace dbow3;
 
 DBoW3Demo::DBoW3Demo() :
-	private_nh_("~")
+	private_nh_("~"),
+	file_path_(std::string(""))
 {
 	std::string mode;
     private_nh_.param("MODE",mode,{std::string("orb")});
     set_detector_mode(mode);
 
     private_nh_.param("DIR_PATH",DIR_PATH_,{std::string("")});
+	file_path_ = DIR_PATH_ + "small_voc.yml.gz";
 }
 
 void DBoW3Demo::set_detector_mode(std::string mode)
@@ -53,7 +55,7 @@ void DBoW3Demo::create_vocabulary(const std::vector<cv::Mat>& features)
 
     // save the vocabulary to disk
     std::cout << std::endl << "Saving vocabulary..." << std::endl;
-    voc.save("small_voc.yml.gz");
+    voc.save(file_path_);
     std::cout << "Done" << std::endl;
 }
 
@@ -62,7 +64,7 @@ void DBoW3Demo::create_database(std::vector<cv::Mat>& features)
 	std::cout << "Creating a small database..." << std::endl;
 
     // load the vocabulary from disk
-    Vocabulary voc("small_voc.yml.gz");
+    Vocabulary voc(file_path_);
 
     Database db(voc,false,0);	// false = do not use direct index
 
@@ -73,34 +75,26 @@ void DBoW3Demo::create_database(std::vector<cv::Mat>& features)
     std::cout << "Database information: " << std::endl;
 	db.get_info();
 
-	/*
-    // and query the database
-    cout << "Querying the database: " << endl;
+    // create query the database
+    std::cout << "Querying the database: " << std::endl;
 
     QueryResults ret;
-    for(size_t i = 0; i < features.size(); i++)
-    {
-        db.query(features[i], ret, 4);
-
-        // ret[0] is always the same image in this case, because we added it to the
-        // database. ret[1] is the second best match.
-
-        cout << "Searching for Image " << i << ". " << ret << endl;
+    for(size_t i = 0; i < features.size(); i++){
+        db.query(features[i],ret,4);
+        std::cout << "Searching for Image " << i << ". " << ret << std::endl;
     }
+    std::cout << std::endl;
 
-    cout << endl;
-
-    // we can save the database. The created file includes the vocabulary
-    // and the entries added
-    cout << "Saving database..." << endl;
-    db.save("small_db.yml.gz");
-    cout << "... done!" << endl;
+    // save the database
+    std::cout << "Saving database..." << std::endl;
+    db.save(file_path_);
+    std::cout << "... done!" << std::endl;
 
     // once saved, we can load it again
-    cout << "Retrieving database once again..." << endl;
-    Database db2("small_db.yml.gz");
-    cout << "... done! This is: " << endl << db2 << endl;
-	*/
+    std::cout << "Retrieving database once again..." << std::endl;
+    Database db2(file_path_);
+    std::cout << "... done! This is: " << std::endl;
+	db2.get_info();
 }
 
 std::vector<cv::Mat> DBoW3Demo::load_features()

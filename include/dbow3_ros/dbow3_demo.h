@@ -33,6 +33,9 @@ private:
 	// detector
 	cv::Ptr<cv::Feature2D> detector_;
 
+	// buffer
+	std::string file_path_;
+
 	// param
 	std::string DIR_PATH_;
 };
