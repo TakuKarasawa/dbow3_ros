@@ -5,7 +5,6 @@ using namespace dbow3;
 DBoW3ROS::DBoW3ROS() :
     private_nh_("~")
 {
-    std::cout << "hello" << std::endl;
 }
 
 void DBoW3ROS::process() { ros::spin(); }

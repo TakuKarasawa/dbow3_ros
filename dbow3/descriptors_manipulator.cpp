@@ -2,7 +2,7 @@
 
 using namespace dbow3;
 
-void DescriptorsManipulator::meanValue(const std::vector<cv::Mat>& descriptors,cv::Mat& mean)
+void DescriptorsManipulator::mean_value(const std::vector<cv::Mat>& descriptors,cv::Mat& mean)
 {
 	if(descriptors.empty()) return;
 
@@ -14,7 +14,7 @@ void DescriptorsManipulator::meanValue(const std::vector<cv::Mat>& descriptors,c
     // binary descriptor
     if(descriptors[0].type() == CV_8U){
         // determine number of bytes of the binary descriptor
-		int L= getDescSizeBytes( descriptors[0]);
+		int L= get_desc_size_bytes(descriptors[0]);
         std::vector<int> sum(L*8,0);
 
         for(size_t i = 0; i < descriptors.size(); i++){
@@ -86,30 +86,9 @@ double DescriptorsManipulator::distance(const cv::Mat& a,const cv::Mat& b)
     }
 }
 
-/*
-uint32_t DescriptorsManipulator::distance_8uc1(const cv::Mat& a,const cv::Mat& b)
-{
-	const uint64_t* pa;
-	const uint64_t* pb;
-	pa = a.ptr<uint64_t>();
-	pb = b.ptr<uint64_t>();
-	
-	uint64_t v, ret = 0;
-	int n = a.cols/sizeof(uint64_t);
-	for(size_t i = 0; i < n; i++, pa++, pb++){
-		v = *pa ^ *pb;
-        v = v - ((v >> 1) & (uint64_t)~(uint64_t)0/3);
-        v = (v & (uint64_t)~(uint64_t)0/15*3) + ((v >> 2) & (uint64_t)~(uint64_t)0/15*3);
-        v = (v + (v >> 4)) & (uint64_t)~(uint64_t)0/255*15;
-    	ret += (uint64_t)(v * ((uint64_t)~(uint64_t)0/255)) >> (sizeof(uint64_t) - 1) * CHAR_BIT;
-	}
-    return ret;
-}
-*/
-
 static inline uint32_t distance_8uc1(const cv::Mat& a,const cv::Mat& b);
 
-std::string DescriptorsManipulator::toString(const cv::Mat& a)
+std::string DescriptorsManipulator::to_string(const cv::Mat& a)
 {
     std::stringstream ss;
     ss << "dbw3 ";
@@ -126,7 +105,7 @@ std::string DescriptorsManipulator::toString(const cv::Mat& a)
     return ss.str();
 }
 
-void DescriptorsManipulator::fromString(cv::Mat& a,const std::string& s)
+void DescriptorsManipulator::from_string(cv::Mat& a,const std::string& s)
 {
     // check if the dbow3 is present
     std::string ss_aux;
@@ -166,7 +145,7 @@ void DescriptorsManipulator::fromString(cv::Mat& a,const std::string& s)
     }
 }
 
-void DescriptorsManipulator::toMat32F(const std::vector<cv::Mat>& descriptors,cv::Mat& mat)
+void DescriptorsManipulator::to_Mat32F(const std::vector<cv::Mat>& descriptors,cv::Mat& mat)
 {
     if(descriptors.empty()){
         mat.release();
@@ -175,7 +154,7 @@ void DescriptorsManipulator::toMat32F(const std::vector<cv::Mat>& descriptors,cv
 
     if(descriptors[0].type() == CV_8UC1){
         const size_t N = descriptors.size();
-        int L = getDescSizeBytes(descriptors[0]);
+        int L = get_desc_size_bytes(descriptors[0]);
         mat.create(N,L*8,CV_32F);
         float* p = mat.ptr<float>();
 
@@ -204,7 +183,7 @@ void DescriptorsManipulator::toMat32F(const std::vector<cv::Mat>& descriptors,cv
     }
 }
 
-void DescriptorsManipulator::toStream(const cv::Mat& m,std::ostream& str)
+void DescriptorsManipulator::to_stream(const cv::Mat& m,std::ostream& str)
 {
     assert(m.rows == 1 || m.isContinuous());
     int type = m.type();
@@ -216,7 +195,7 @@ void DescriptorsManipulator::toStream(const cv::Mat& m,std::ostream& str)
     str.write((char*)m.ptr<char>(0),m.elemSize()*m.cols);
 }
 
-void DescriptorsManipulator::fromStream(cv::Mat& m,std::istream& str)
+void DescriptorsManipulator::from_stream(cv::Mat& m,std::istream& str)
 {
     int type, cols, rows;
     str.read((char*)&cols,sizeof(cols));

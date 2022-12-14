@@ -415,7 +415,7 @@ void Vocabulary::save(cv::FileStorage& f,const std::string &name) const
       		f << "nodeId" << (int)child.id;
       		f << "parentId" << (int)pid;
       		f << "weight" << (double)child.weight;
-      		f << "descriptor" << DescriptorsManipulator::toString(child.descriptor);
+      		f << "descriptor" << DescriptorsManipulator::to_string(child.descriptor);
       		f << "}";
 			
 			// add to parent list
@@ -496,7 +496,7 @@ void Vocabulary::load(const cv::FileStorage& fs,const std::string& name)
     	nodes_[nid].weight = weight;
     	nodes_[pid].children.push_back(nid);
 
-		DescriptorsManipulator::fromString(nodes_[nid].descriptor,d);
+		DescriptorsManipulator::from_string(nodes_[nid].descriptor,d);
   	}
 	
 	// words
@@ -552,7 +552,7 @@ void Vocabulary::to_stream(std::ostream& out_str, bool compressed) const
             aux_stream.write((char*)&child.id,sizeof(child.id));
             aux_stream.write((char*)&pid,sizeof(pid));
             aux_stream.write((char*)&child.weight,sizeof(child.weight));
-			DescriptorsManipulator::toStream(child.descriptor,aux_stream);
+			DescriptorsManipulator::to_stream(child.descriptor,aux_stream);
             
 			// add to parent list
             if(!child.is_leaf()) parents.emplace_back(pit);
@@ -660,7 +660,7 @@ void Vocabulary::from_stream(std::istream& str)
         _used_str->read((char*)&child.parent,sizeof(child.parent));
         _used_str->read((char*)&child.weight,sizeof(child.weight));
         
-		DescriptorsManipulator::fromStream(child.descriptor,*_used_str);
+	DescriptorsManipulator::from_stream(child.descriptor,*_used_str);
         nodes_[child.parent].children.emplace_back(child.id);
     }
     
@@ -843,7 +843,7 @@ void Vocabulary::HK_means_step(unsigned int parent_id,const std::vector<cv::Mat>
                     for(vit = groups[c].begin(); vit != groups[c].end(); vit++){
                         cluster_descriptors.emplace_back(descriptors[*vit]);
                     }
-					DescriptorsManipulator::meanValue(cluster_descriptors,clusters[c]);
+					DescriptorsManipulator::mean_value(cluster_descriptors,clusters[c]);
                 }
 
             }

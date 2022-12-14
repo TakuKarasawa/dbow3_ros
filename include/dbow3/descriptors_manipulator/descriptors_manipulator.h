@@ -13,15 +13,15 @@ namespace dbow3
 class DescriptorsManipulator
 {
 public:
-	static void meanValue(const std::vector<cv::Mat>& descriptors,cv::Mat& mean);
+	static void mean_value(const std::vector<cv::Mat>& descriptors,cv::Mat& mean);
 	static double distance(const cv::Mat& a,const cv::Mat& b);
 	static inline uint32_t distance_8uc1(const cv::Mat& a,const cv::Mat& b);
-	static std::string toString(const cv::Mat& a);
-	static void fromString(cv::Mat& a,const std::string& s);
-	static void toMat32F(const std::vector<cv::Mat>& descriptors,cv::Mat& mat);
-	static void toStream(const cv::Mat &m,std::ostream &str);
-	static void fromStream(cv::Mat &m,std::istream &str);
-	static size_t getDescSizeBytes(const cv::Mat & d){return d.cols* d.elemSize();}
+	static std::string to_string(const cv::Mat& a);
+	static void from_string(cv::Mat& a,const std::string& s);
+	static void to_Mat32F(const std::vector<cv::Mat>& descriptors,cv::Mat& mat);
+	static void to_stream(const cv::Mat &m,std::ostream &str);
+	static void from_stream(cv::Mat &m,std::istream &str);
+	static size_t get_desc_size_bytes(const cv::Mat & d){return d.cols* d.elemSize();}
 
 private:
 };

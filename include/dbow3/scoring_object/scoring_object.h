@@ -14,7 +14,7 @@ public:
 	virtual ~GeneralScoring() {} 
 	virtual double score(const BowVector& v,const BowVector& w) const = 0;
 	virtual bool mustNormalize(LNorm &norm) const = 0;
-	
+
 	static const double LOG_EPS; 
 };
 
@@ -27,7 +27,7 @@ public:
     virtual inline bool mustNormalize(LNorm &norm) const  \
     	{ norm = NORM; return MUSTNORMALIZE; } \
 }
-  
+
 /// L1 Scoring object
 class __SCORING_CLASS(L1Scoring, true, L1);
 
