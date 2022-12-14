@@ -10,14 +10,14 @@
 namespace dbow3
 {
 // Vector of nodes with indexes of local features
-class FeatureVector : public std::map<NodeId,std::vector<unsigned int>>
+class FeatureVector : public std::map<unsigned int,std::vector<unsigned int>>
 {
 public:
 	FeatureVector();
 	~FeatureVector();
 	
-	void addFeature(NodeId id,unsigned int i_feature);
-	friend std::ostream& operator<<(std::ostream& out,const FeatureVector& v);
+	void add_feature(unsigned int id,unsigned int i_feature);
+	friend std::ostream& operator<<(std::ostream& out,const FeatureVector& fv);
     
 };
 }	// namespace dbow3

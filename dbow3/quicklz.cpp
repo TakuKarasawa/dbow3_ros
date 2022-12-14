@@ -15,7 +15,7 @@
 
 #if QLZ_COMPRESSION_LEVEL == 1 && defined QLZ_PTR_64 && QLZ_STREAMING_BUFFER == 0
 	#define OFFSET_BASE source
-	#define CAST (ui32)(size_t)
+	#define CAST (unsigned int)(size_t)
 #else
 	#define OFFSET_BASE 0
 	#define CAST
@@ -26,8 +26,8 @@ int qlz_get_setting(int setting)
 	switch(setting)
 	{
 		case 0: return QLZ_COMPRESSION_LEVEL;
-		case 1: return sizeof(qlz_state_compress);
-		case 2: return sizeof(qlz_state_decompress);
+		case 1: return sizeof(QlzStateCompress);
+		case 2: return sizeof(QlzStateDecompress);
 		case 3: return QLZ_STREAMING_BUFFER;
 #ifdef QLZ_MEMORY_SAFE
 		case 6: return 1;
@@ -50,7 +50,7 @@ static int same(const unsigned char* src,size_t n)
 }
 #endif
 
-static void reset_table_compress(qlz_state_compress* state)
+static void reset_table_compress(QlzStateCompress* state)
 {
 	int i;
 	for(i = 0; i < QLZ_HASH_VALUES; i++){
@@ -62,7 +62,7 @@ static void reset_table_compress(qlz_state_compress* state)
 	}
 }
 
-static void reset_table_decompress(qlz_state_decompress* state)
+static void reset_table_decompress(QlzStateDecompress* state)
 {
 	int i;
 	(void)state;
@@ -72,7 +72,7 @@ static void reset_table_decompress(qlz_state_decompress* state)
 #endif
 }
 
-static __inline ui32 hash_func(ui32 i)
+static __inline unsigned int hash_func(unsigned int i)
 {
 #if QLZ_COMPRESSION_LEVEL == 2
 	return ((i >> 9) ^ (i >> 13) ^ i) & (QLZ_HASH_VALUES - 1);
@@ -81,7 +81,7 @@ static __inline ui32 hash_func(ui32 i)
 #endif
 }
 
-static __inline ui32 fast_read(void const* src,ui32 bytes)
+static __inline unsigned int fast_read(void const* src,unsigned int bytes)
 {
 #ifndef X86X64
 	unsigned char *p = (unsigned char*)src;
@@ -94,20 +94,20 @@ static __inline ui32 fast_read(void const* src,ui32 bytes)
 	}
 	return 0;
 #else
-	if(bytes >= 1 && bytes <= 4) return *((ui32*)src);
+	if(bytes >= 1 && bytes <= 4) return *((unsigned int*)src);
 	else return 0;
 #endif
 }
 
-static __inline ui32 hashat(const unsigned char* src)
+static __inline unsigned int hashat(const unsigned char* src)
 {
-	ui32 fetch, hash;
+	unsigned int fetch, hash;
 	fetch = fast_read(src,3);
 	hash = hash_func(fetch);
 	return hash;
 }
 
-static __inline void fast_write(ui32 f,void* dst,size_t bytes)
+static __inline void fast_write(unsigned int f,void* dst,size_t bytes)
 {
 #ifndef X86X64
 	unsigned char *p = (unsigned char*)dst;
@@ -140,15 +140,15 @@ static __inline void fast_write(ui32 f,void* dst,size_t bytes)
 	switch(bytes)
 	{
 		case 4: 
-			*((ui32*)dst) = f;
+			*((unsigned int*)dst) = f;
 			return;
 
 		case 3:
-			*((ui32*)dst) = f;
+			*((unsigned int*)dst) = f;
 			return;
 		
 		case 2:
-			*((ui16 *)dst) = (ui16)f;
+			*((unsigned short int*)dst) = (unsigned short int)f;
 			return;
 		
 		case 1:
@@ -160,7 +160,7 @@ static __inline void fast_write(ui32 f,void* dst,size_t bytes)
 
 size_t qlz_size_decompressed(const char* source)
 {
-	ui32 n, r;
+	unsigned int n, r;
 	n = (((*source) & 2) == 2) ? 4 : 1;
 	r = fast_read(source + 1 + n, n);
 	r = r & (0xffffffff >> ((4 - n)*8));
@@ -169,7 +169,7 @@ size_t qlz_size_decompressed(const char* source)
 
 size_t qlz_size_compressed(const char* source)
 {
-	ui32 n, r;
+	unsigned int n, r;
 	n = (((*source) & 2) == 2) ? 4 : 1;
 	r = fast_read(source + 1,n);
 	r = r & (0xffffffff >> ((4 - n)*8));
@@ -182,7 +182,7 @@ size_t qlz_size_header(const char* source)
 	return n;
 }
 
-static __inline void memcpy_up(unsigned char* dst,const unsigned char* src,ui32 n)
+static __inline void memcpy_up(unsigned char* dst,const unsigned char* src,unsigned int n)
 {
 	// Caution if modifying memcpy_up! Overlap of dst and src must be special handled.
 #ifndef X86X64
@@ -193,20 +193,19 @@ static __inline void memcpy_up(unsigned char* dst,const unsigned char* src,ui32 
 		src++;
 	}
 #else
-	ui32 f = 0;
+	unsigned int f = 0;
 	do{
-		*(ui32 *)(dst + f) = *(ui32 *)(src + f);
+		*(unsigned int*)(dst + f) = *(unsigned int*)(src + f);
 		f += MINOFFSET + 1;
 	}
 	while(f < n);
 #endif
 }
 
-static __inline void update_hash(qlz_state_decompress* state,const unsigned char* s)
+static __inline void update_hash(QlzStateDecompress* state,const unsigned char* s)
 {
 #if QLZ_COMPRESSION_LEVEL == 1
-	ui32 hash;
-	hash = hashat(s);
+	unsigned int hash = hashat(s);
 	state->hash[hash].offset = s;
 	state->hash_counter[hash] = 1;
 #elif QLZ_COMPRESSION_LEVEL == 2
@@ -223,7 +222,7 @@ static __inline void update_hash(qlz_state_decompress* state,const unsigned char
 }
 
 #if QLZ_COMPRESSION_LEVEL <= 2
-static void update_hash_upto(qlz_state_decompress* state,unsigned char** lh,const unsigned char* max)
+static void update_hash_upto(QlzStateDecompress* state,unsigned char** lh,const unsigned char* max)
 {
 	while(*lh < max){
 		(*lh)++;
@@ -232,15 +231,15 @@ static void update_hash_upto(qlz_state_decompress* state,unsigned char** lh,cons
 }
 #endif
 
-static size_t qlz_compress_core(const unsigned char* source,unsigned char* destination,size_t size,qlz_state_compress* state)
+static size_t qlz_compress_core(const unsigned char* source,unsigned char* destination,size_t size,QlzStateCompress* state)
 {
 	const unsigned char* last_byte = source + size - 1;
 	const unsigned char* src = source;
 	unsigned char* cword_ptr = destination;
 	unsigned char* dst = destination + CWORD_LEN;
-	ui32 cword_val = 1U << 31;
+	unsigned int cword_val = 1U << 31;
 	const unsigned char* last_matchstart = last_byte - UNCONDITIONAL_MATCHLEN - UNCOMPRESSED_END; 
-	ui32 fetch = 0;
+	unsigned int fetch = 0;
 	unsigned int lits = 0;
 
 	(void)lits;
@@ -261,7 +260,7 @@ static size_t qlz_compress_core(const unsigned char* source,unsigned char* desti
 #if QLZ_COMPRESSION_LEVEL == 1
 		{
 			const unsigned char *o;
-			ui32 hash, cached;
+			unsigned int hash, cached;
 
 			hash = hash_func(fetch);
 			cached = fetch ^ state->hash[hash].cache;
@@ -303,11 +302,11 @@ static size_t qlz_compress_core(const unsigned char* source,unsigned char* desti
 
 					matchlen = src - old_src;
 					if (matchlen < 18){
-						fast_write((ui32)(matchlen - 2) | hash, dst,2);
+						fast_write((unsigned int)(matchlen - 2) | hash, dst,2);
 						dst += 2;
 					} 
 					else{
-						fast_write((ui32)(matchlen << 16) | hash,dst,3);
+						fast_write((unsigned int)(matchlen << 16) | hash,dst,3);
 						dst += 3;
 					}
 				}
@@ -457,7 +456,7 @@ static size_t qlz_compress_core(const unsigned char* source,unsigned char* desti
 #if QLZ_COMPRESSION_LEVEL < 3
 		if(src <= last_byte - 3){
 #if QLZ_COMPRESSION_LEVEL == 1
-			ui32 hash, fetch;
+			unsigned int hash, fetch;
 			fetch = fast_read(src,3);
 			hash = hash_func(fetch);
 			state->hash[hash].offset = CAST(src - OFFSET_BASE);
@@ -487,16 +486,16 @@ static size_t qlz_compress_core(const unsigned char* source,unsigned char* desti
 	return dst - destination < 9 ? 9 : dst - destination;
 }
 
-static size_t qlz_decompress_core(const unsigned char* source,unsigned char* destination,size_t size,qlz_state_decompress* state,const unsigned char* history)
+static size_t qlz_decompress_core(const unsigned char* source,unsigned char* destination,size_t size,QlzStateDecompress* state,const unsigned char* history)
 {
 	const unsigned char* src = source + qlz_size_header((const char*)source);
 	unsigned char* dst = destination;
 	const unsigned char* last_destination_byte = destination + size - 1;
-	ui32 cword_val = 1;
+	unsigned int cword_val = 1;
 	const unsigned char* last_matchstart = last_destination_byte - UNCONDITIONAL_MATCHLEN - UNCOMPRESSED_END;
 	unsigned char* last_hashed = destination - 1;
 	const unsigned char* last_source_byte = source + qlz_size_compressed((const char*)source) - 1;
-	static const ui32 bitlut[16] = {4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+	static const unsigned int bitlut[16] = {4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
 
 	(void) last_source_byte;
 	(void) last_hashed;
@@ -504,7 +503,7 @@ static size_t qlz_decompress_core(const unsigned char* source,unsigned char* des
 	(void) history;
 
 	for(;;) {
-		ui32 fetch;
+		unsigned int fetch;
 
 		if(cword_val == 1){
 #ifdef QLZ_MEMORY_SAFE
@@ -521,11 +520,11 @@ static size_t qlz_decompress_core(const unsigned char* source,unsigned char* des
 		fetch = fast_read(src,4);
 
 		if((cword_val & 1) == 1){
-			ui32 matchlen;
+			unsigned int matchlen;
 			const unsigned char* offset2;
 
 #if QLZ_COMPRESSION_LEVEL == 1
-			ui32 hash;
+			unsigned int hash;
 			cword_val = cword_val >> 1;
 			hash = (fetch >> 4) & 0xfff;
 			offset2 = (const unsigned char*)(size_t)state->hash[hash].offset;
@@ -605,7 +604,7 @@ static size_t qlz_decompress_core(const unsigned char* source,unsigned char* des
 			if(dst < last_matchstart){
 				unsigned int n = bitlut[cword_val & 0xf];
 #ifdef X86X64
-				*(ui32*)dst = *(ui32*)src;
+				*(unsigned int*)dst = *(unsigned int*)src;
 #else
 				memcpy_up(dst,src,4);
 #endif
@@ -640,10 +639,10 @@ static size_t qlz_decompress_core(const unsigned char* source,unsigned char* des
 	}
 }
 
-size_t qlz_compress(const void* source,char* destination,size_t size,qlz_state_compress* state)
+size_t qlz_compress(const void* source,char* destination,size_t size,QlzStateCompress* state)
 {
 	size_t r;
-	ui32 compressed;
+	unsigned int compressed;
 	size_t base;
 
 	if(size == 0 || size > 0xffffffff - 400) return 0;
@@ -693,8 +692,8 @@ size_t qlz_compress(const void* source,char* destination,size_t size,qlz_state_c
 	}
 	else{
 		*destination = (unsigned char)(2 | compressed);
-		fast_write((ui32)r, destination + 1, 4);
-		fast_write((ui32)size, destination + 5, 4);
+		fast_write((unsigned int)r,destination + 1,4);
+		fast_write((unsigned int)size,destination + 5,4);
 	}
 	
 	*destination |= (QLZ_COMPRESSION_LEVEL << 2);
@@ -704,7 +703,7 @@ size_t qlz_compress(const void* source,char* destination,size_t size,qlz_state_c
 	return r;
 }
 
-size_t qlz_decompress(const char* source,void* destination,qlz_state_decompress* state)
+size_t qlz_decompress(const char* source,void* destination,QlzStateDecompress* state)
 {
 	size_t dsiz = qlz_size_decompressed(source);
 

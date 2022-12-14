@@ -2,17 +2,17 @@
 
 using namespace dbow3;
 
-inline void QueryResults::scaleScores(double factor)
+inline void QueryResults::scale_scores(double factor)
 {
-	for(QueryResults::iterator qit = begin(); qit != end(); qit++) qit->Score *= factor;
+	for(QueryResults::iterator qit = begin(); qit != end(); qit++) qit->score *= factor;
 }
 
-void QueryResults::saveM(const std::string &filename) const
+void QueryResults::save_M(const std::string &filename) const
 {
 	std::fstream f(filename.c_str(),std::ios::out);
 	QueryResults::const_iterator qit;
 	for(qit = begin(); qit != end(); qit++){
-		f << qit->Id << " " << qit->Score << std::endl;
+		f << qit->id << " " << qit->score << std::endl;
   	}
   	f.close();
 }

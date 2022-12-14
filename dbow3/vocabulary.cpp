@@ -2,57 +2,56 @@
 
 using namespace dbow3;
 
-Vocabulary::Vocabulary(int k,int L,WeightingType weighting,ScoringType scoring) : 
-	m_k(k), m_L(L), m_weighting(weighting), m_scoring(scoring),
-	m_scoring_object(NULL)
+Vocabulary::Vocabulary(int k,int L,WeightingType weighting_type,ScoringType scoring_type) : 
+	branching_factor_(k), depth_levels_(L), 
+	weighting_type_(weighting_type), scoring_type_(scoring_type),
+	scoring_object_(NULL)
 {
-	createScoringObject();
+	create_scoring_object();
 }
 
 Vocabulary::Vocabulary(const std::string& file_name) : 
-	m_scoring_object(NULL)
+	scoring_object_(NULL)
 {
 	load(file_name);
 }
 
 Vocabulary::Vocabulary(const char* file_name) : 
-	m_scoring_object(NULL)
+	scoring_object_(NULL)
 {
 	load(file_name);
 }
 
 Vocabulary::Vocabulary(std::istream& stream) : 
-	m_scoring_object(NULL)
+	scoring_object_(NULL)
 {
 	load(stream);
 }
 
-Vocabulary::Vocabulary(const Vocabulary& voc) : 
-	m_scoring_object(NULL)
+Vocabulary::Vocabulary(const Vocabulary& vocabulary) : 
+	scoring_object_(NULL)
 {
-	*this = voc;
+	*this = vocabulary;
 }
 
 Vocabulary::~Vocabulary()
 {
-	delete m_scoring_object;
+	delete scoring_object_;
 }
 
-Vocabulary& Vocabulary::operator=(const Vocabulary &voc)
+Vocabulary& Vocabulary::operator=(const Vocabulary& vocabulary)
 {
-	this->m_k = voc.m_k;
-  	this->m_L = voc.m_L;
-  	this->m_scoring = voc.m_scoring;
-  	this->m_weighting = voc.m_weighting;
+	branching_factor_ = vocabulary.branching_factor_;
+  	depth_levels_ = vocabulary.depth_levels_;
+  	scoring_type_ = vocabulary.scoring_type_;
+  	weighting_type_ = vocabulary.weighting_type_;
+	create_scoring_object();
 	
-	this->createScoringObject();
-	
-	this->m_nodes.clear();
-	this->m_words.clear();
+	nodes_.clear();
+	words_.clear();
+	nodes_ = vocabulary.nodes_;
+	create_words();
 
-  	this->m_nodes = voc.m_nodes;
-  	this->createWords();
-	
 	return *this;
 }
 
@@ -70,81 +69,84 @@ void Vocabulary::create(const std::vector<cv::Mat>& training_features)
 
 void Vocabulary::create(const std::vector<std::vector<cv::Mat>>& training_features)
 {
-	m_nodes.clear();
-	m_words.clear();
+	nodes_.clear();
+	words_.clear();
 	
-	int expected_nodes = (int)((std::pow((double)m_k,(double)m_L + 1) - 1)/(m_k - 1));
-	m_nodes.reserve(expected_nodes); 
+	int expected_nodes = (int)((std::pow((double)branching_factor_,(double)depth_levels_ + 1) - 1)/(branching_factor_ - 1));
+	nodes_.reserve(expected_nodes); 
 
   	std::vector<cv::Mat> features;
-  	getFeatures(training_features, features);
+  	get_features(training_features, features);
 	
 	// create root
-	m_nodes.push_back(Node(0));	// root
+	nodes_.emplace_back(Node(0));	// root
 	
 	// create the tree
-  	HKmeansStep(0,features,1);
+  	HK_means_step(0,features,1);
 	
 	// create the words
-  	createWords();
+  	create_words();
 	
 	// and set the weight of each node of the tree
-  	setNodeWeights(training_features);
+  	set_node_weights(training_features);
 }
 
-void Vocabulary::create(const std::vector<std::vector<cv::Mat>>& training_features,int k,int L)
+void Vocabulary::create(const std::vector<std::vector<cv::Mat>>& training_features,
+                        int branching_factor,int depth_levels)
 {
-	m_k = k;
-  	m_L = L;
+	branching_factor_ = branching_factor;
+	depth_levels_ = depth_levels;
 	create(training_features);
 }
 
-void Vocabulary::create(const std::vector<std::vector<cv::Mat>>& training_features,int k,int L,WeightingType weighting,ScoringType scoring)
+void Vocabulary::create(const std::vector<std::vector<cv::Mat>>& training_features,
+                        int branching_factor,int depth_levels,
+						WeightingType weighting_type,ScoringType scoring_type)
 {
-	m_k = k;
-  	m_L = L;
-  	m_weighting = weighting;
-  	m_scoring = scoring;
-  	createScoringObject();
+	branching_factor_ = branching_factor;
+	depth_levels_ = depth_levels;
+  	weighting_type_ = weighting_type;
+  	scoring_type_ = scoring_type;
+  	create_scoring_object();
 	
 	create(training_features);
 }
 
-inline unsigned int Vocabulary::size() const
+inline unsigned int Vocabulary::get_words_size() const
 { 
-	return (unsigned int)m_words.size(); 
+	return (unsigned int)words_.size(); 
 }
 
-inline bool Vocabulary::empty() const
+inline bool Vocabulary::is_empty() const
 { 
-	return m_words.empty(); 
+	return words_.empty(); 
 }
 
-void Vocabulary::clear()
+void Vocabulary::clear_vocabulary()
 {
-	delete m_scoring_object;
-    m_scoring_object = 0;
-    m_nodes.clear();
-    m_words.clear();
+	delete scoring_object_;
+    scoring_object_ = 0;
+    nodes_.clear();
+    words_.clear();
 }
 
 void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v) const
 {
 	v.clear();
-	if(empty()) return;
+	if(is_empty()) return;
 	
 	// normalize
 	LNorm norm;
-  	bool must = m_scoring_object->mustNormalize(norm);
+  	bool must = scoring_object_->mustNormalize(norm);
   	
-	if(m_weighting == TF || m_weighting == TF_IDF){
+	if(weighting_type_ == TF || weighting_type_ == TF_IDF){
 		for(auto fit = features.begin(); fit < features.end(); fit++){
-			WordId id;
-      		WordValue w;
+			unsigned int id;
+      		double w;
 			transform(*fit,id,w);
 			
 			// not stopped
-			if(w > 0) v.addWeight(id,w);
+			if(w > 0) v.add_weight(id,w);
     	}
 		
 		if(!v.empty() && !must){
@@ -155,12 +157,12 @@ void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v) co
 	}
   	else{
 		for(auto fit = features.begin(); fit < features.end(); fit++){
-			WordId id;
-      		WordValue w;
+			unsigned int id;
+      		double w;
 			transform(*fit,id,w);
 			
 			// not stopped
-			if(w > 0) v.addIfNotExist(id,w);
+			if(w > 0) v.add_if_not_exist(id,w);
 		}
   	}
 	
@@ -170,20 +172,20 @@ void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v) co
 void Vocabulary::transform(const cv::Mat& features,BowVector& v) const
 {
 	v.clear();
-	if(empty()) return;
+	if(is_empty()) return;
     
     // normalize
     LNorm norm;
-    bool must = m_scoring_object->mustNormalize(norm);
+    bool must = scoring_object_->mustNormalize(norm);
 
-    if(m_weighting == TF || m_weighting == TF_IDF){
+    if(weighting_type_ == TF || weighting_type_ == TF_IDF){
 		for(int r = 0; r < features.rows; r++){
-			WordId id;
-            WordValue w;
+			unsigned int id;
+            double w;
             transform(features.row(r),id,w);
 
             // not stopped
-            if(w > 0) v.addWeight(id,w);
+            if(w > 0) v.add_weight(id,w);
         }
 
         if(!v.empty() && !must){
@@ -194,13 +196,13 @@ void Vocabulary::transform(const cv::Mat& features,BowVector& v) const
     }
     else{
         for(int r = 0; r <features.rows; r++){
-			WordId id;
-            WordValue w;
+			unsigned int id;
+            double w;
 
             transform(features.row(r),id,w);
 
             // not stopped
-            if(w > 0) v.addIfNotExist(id,w);
+            if(w > 0) v.add_if_not_exist(id,w);
         }
     }
     if(must) v.normalize(norm);
@@ -211,24 +213,24 @@ void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v,Fea
 	v.clear();
   	fv.clear();
 	
-	if(empty()) return;
+	if(is_empty()) return;
 	
 	// normalize
   	LNorm norm;
-  	bool must = m_scoring_object->mustNormalize(norm);
+  	bool must = scoring_object_->mustNormalize(norm);
 	
-	if(m_weighting == TF || m_weighting == TF_IDF){
+	if(weighting_type_ == TF || weighting_type_ == TF_IDF){
 		unsigned int i_feature = 0;
     	for(auto fit = features.begin(); fit < features.end(); fit++, i_feature++){
-			WordId id;
-      		NodeId nid;
-      		WordValue w;
+			unsigned int id;
+      		unsigned int nid;
+      		double w;
       		transform(*fit,id,w,&nid,levelsup);
 
 			// not stopped
       		if(w > 0) {
-				v.addWeight(id,w);
-				fv.addFeature(nid,i_feature);
+				v.add_weight(id,w);
+				fv.add_feature(nid,i_feature);
       		}
     	}
 		
@@ -241,15 +243,15 @@ void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v,Fea
   	else{
 		unsigned int i_feature = 0;
 		for(auto fit = features.begin(); fit < features.end(); fit++, i_feature++){
-			WordId id;
-      		NodeId nid;
-      		WordValue w;
+			unsigned int id;
+      		unsigned int nid;
+      		double w;
 			transform(*fit,id,w,&nid,levelsup);
 
 			// not stopped
       		if(w > 0){
-				v.addIfNotExist(id,w);
-				fv.addFeature(nid,i_feature);
+				v.add_if_not_exist(id,w);
+				fv.add_feature(nid,i_feature);
       		}
     	}
   	} 
@@ -257,116 +259,116 @@ void Vocabulary::transform(const std::vector<cv::Mat>& features,BowVector& v,Fea
 	if(must) v.normalize(norm);
 }
 
-WordId Vocabulary::transform(const cv::Mat& feature) const
+unsigned int Vocabulary::transform(const cv::Mat& feature) const
 {
-	if(empty()) return 0;
+	if(is_empty()) return 0;
 	
-	WordId wid;
+	unsigned int wid;
 	transform(feature,wid);
 	return wid;
 }
 
 double Vocabulary::score(const BowVector& a,const BowVector& b) const 
 { 
-	return m_scoring_object->score(a,b); 
+	return scoring_object_->score(a,b); 
 }
 
-NodeId Vocabulary::getParentNode(WordId wid,int levelsup) const
-{
-	NodeId ret = m_words[wid]->id;	// node id
-  	while(levelsup > 0 && ret != 0){
-		--levelsup;
-    	ret = m_nodes[ret].parent;
-  	}
-	return ret;
-}
-
-void Vocabulary::getWordsFromNode(NodeId nid,std::vector<WordId>& words) const
+void Vocabulary::get_words_from_node(unsigned int node_id,std::vector<unsigned int>& words) const
 {
 	words.clear();
-	if(m_nodes[nid].isLeaf()) words.emplace_back(m_nodes[nid].word_id);
+	if(nodes_[node_id].is_leaf()) words.emplace_back(nodes_[node_id].word_id);
 	else{
-		words.reserve(m_k);
-		std::vector<NodeId> parents;
-		parents.emplace_back(nid);
+		words.reserve(branching_factor_);
+		std::vector<unsigned int> parents;
+		parents.emplace_back(node_id);
 
     	while(!parents.empty()){
-			NodeId parentid = parents.back();
+			unsigned int parentid = parents.back();
       		parents.pop_back();
 
-      		const std::vector<NodeId> &child_ids = m_nodes[parentid].children;
-      		std::vector<NodeId>::const_iterator cit;
+      		const std::vector<unsigned int>& child_ids = nodes_[parentid].children;
+      		std::vector<unsigned int>::const_iterator cit;
 			for(cit = child_ids.begin(); cit != child_ids.end(); cit++){
-				const Node &child_node = m_nodes[*cit];
+				const Node &child_node = nodes_[*cit];
 				
-				if(child_node.isLeaf()) words.emplace_back(child_node.word_id);
+				if(child_node.is_leaf()) words.emplace_back(child_node.word_id);
         		else parents.emplace_back(*cit);
       		} 
     	} 
   	}
 }
 
-inline int Vocabulary::getBranchingFactor() const 
-{ 
-	return m_k; 
+cv::Mat Vocabulary::get_word(unsigned int word_id) const
+{
+	return words_[word_id]->descriptor;
 }
 
-inline int Vocabulary::getDepthLevels() const 
+WeightingType Vocabulary::get_weighting_type()
 { 
-	return m_L; 
+	return weighting_type_; 
 }
 
-float Vocabulary::getEffectiveLevels() const
+ScoringType Vocabulary::get_scoring_type()
+{ 
+	return scoring_type_; 
+}
+
+unsigned int Vocabulary::get_parent_node(unsigned int word_id,int levelsup) const
+{
+	unsigned int ret = words_[word_id]->id;	// node id
+  	while(levelsup > 0 && ret != 0){
+		--levelsup;
+    	ret = nodes_[ret].parent;
+  	}
+	return ret;
+}
+
+int Vocabulary::get_descritor_size() const
+{
+	if(words_.size() == 0) return -1;
+    else return words_[0]->descriptor.cols;
+}
+
+int Vocabulary::get_descritor_type() const
+{
+	if(words_.size() == 0) return -1;
+    else return words_[0]->descriptor.type();
+}
+
+inline int Vocabulary::get_branching_factor() const 
+{ 
+	return branching_factor_; 
+}
+
+inline int Vocabulary::get_depth_levels() const 
+{ 
+	return depth_levels_; 
+}
+
+float Vocabulary::get_effective_levels() const
 {
 	long sum = 0;
-	for(auto wit = m_words.begin(); wit != m_words.end(); wit++){
+	for(auto wit = words_.begin(); wit != words_.end(); wit++){
 		const Node* p = *wit;
-		for(; p->id != 0; sum++) p = &m_nodes[p->parent];
+		for(; p->id != 0; sum++) p = &nodes_[p->parent];
   	}
-	return (float)((double)sum/(double)m_words.size());
+	return (float)((double)sum/(double)words_.size());
 }
 
-cv::Mat Vocabulary::getWord(WordId wid) const
+double Vocabulary::get_word_weight(unsigned int word_id) const
 {
-	return m_words[wid]->descriptor;
+	return words_[word_id]->weight;
 }
 
-WordValue Vocabulary::getWordWeight(WordId wid) const
+void Vocabulary::set_weighting_type(WeightingType weighting_type)
 {
-	return m_words[wid]->weight;
+	weighting_type_ = weighting_type;
 }
 
-/*
-inline WeightingType Vocabulary::getWeightingType()
-{ 
-	return m_weighting; 
-}
-
-inline ScoringType Vocabulary::getScoringType()
-{ 
-	return m_scoring; 
-}
-*/
-
-WeightingType Vocabulary::getWeightingType()
-{ 
-	return m_weighting; 
-}
-
-ScoringType Vocabulary::getScoringType()
-{ 
-	return m_scoring; 
-}
-
-void Vocabulary::setScoringType(ScoringType type)
+void Vocabulary::set_scoring_type(ScoringType scoring_type)
 {
-	m_scoring = type;
-	createScoringObject();
-}
-
-void Vocabulary::setWeightingType(WeightingType type)
-{
-	this->m_weighting = type;
+	scoring_type_ = scoring_type;
+	create_scoring_object();
 }
 
 void Vocabulary::save(const std::string& file_name,bool binary_compressed) const
@@ -374,7 +376,7 @@ void Vocabulary::save(const std::string& file_name,bool binary_compressed) const
 	if(file_name.find(".yml") == std::string::npos){
 		std::ofstream file_out(file_name,std::ios::binary);
         if(!file_out) throw std::runtime_error("Vocabulary::saveBinary Could not open file : " +file_name+ " for writing");
-        toStream(file_out,binary_compressed);
+        to_stream(file_out,binary_compressed);
     }
     else{
         cv::FileStorage fs(file_name.c_str(),cv::FileStorage::WRITE);
@@ -386,27 +388,27 @@ void Vocabulary::save(const std::string& file_name,bool binary_compressed) const
 void Vocabulary::save(cv::FileStorage& f,const std::string &name) const
 {
 	f << name << "{";
-	f << "k" << m_k;
- 	f << "L" << m_L;
-  	f << "scoringType" << m_scoring;
-  	f << "weightingType" << m_weighting;
+	f << "k" << branching_factor_;
+ 	f << "L" << depth_levels_;
+  	f << "scoringType" << scoring_type_;
+  	f << "weightingType" << weighting_type_;
 
   	// tree
   	f << "nodes" << "[";
-  	std::vector<NodeId> parents, children;
-  	std::vector<NodeId>::const_iterator pit;
+  	std::vector<unsigned int> parents, children;
+  	std::vector<unsigned int>::const_iterator pit;
   	parents.emplace_back(0);	// root
 
   	while(!parents.empty()){
-		NodeId pid = parents.back();
+		unsigned int pid = parents.back();
     	parents.pop_back();
 
-    	const Node& parent = m_nodes[pid];
+    	const Node& parent = nodes_[pid];
     	children = parent.children;
 
     	for(pit = children.begin(); pit != children.end(); pit++){
-			const Node& child = m_nodes[*pit];
-      		std::cout<<m_nodes[*pit].id << " ";
+			const Node& child = nodes_[*pit];
+      		std::cout<< nodes_[*pit].id << " ";
 			
 			// save node data
       		f << "{:";
@@ -417,7 +419,7 @@ void Vocabulary::save(cv::FileStorage& f,const std::string &name) const
       		f << "}";
 			
 			// add to parent list
-			if(!child.isLeaf()) parents.emplace_back(*pit); 
+			if(!child.is_leaf()) parents.emplace_back(*pit); 
     	}
   	}
   	std::cout << "\n";
@@ -425,8 +427,8 @@ void Vocabulary::save(cv::FileStorage& f,const std::string &name) const
 
   	// words
   	f << "words" << "[";
-	for(auto wit = m_words.begin(); wit != m_words.end(); wit++){
-		WordId id = wit - m_words.begin();
+	for(auto wit = words_.begin(); wit != words_.end(); wit++){
+		unsigned int id = wit - words_.begin();
     	f << "{:";
     	f << "wordId" << (int)id;
     	f << "nodeId" << (int)(*wit)->id;
@@ -443,7 +445,7 @@ void Vocabulary::load(const std::string& file_name)
     if(!ifile) throw std::runtime_error("Vocabulary::load Could not open file : " +file_name+ " for reading");
     if(!load(ifile)){
         if(file_name.find(".txt") != std::string::npos){
-			load_fromtxt(file_name);
+			load_from_txt(file_name);
 		}else{
 			cv::FileStorage fs(file_name.c_str(),cv::FileStorage::READ);
 	    	if(!fs.isOpened()) throw std::string("Could not open file ") + file_name;
@@ -461,59 +463,59 @@ bool Vocabulary::load(std::istream& ifile)
 	if(sig != 88877711233) return false;
 	
 	ifile.seekg(0,std::ios::beg);
-    fromStream(ifile);
+    from_stream(ifile);
     return true;
 }
 
 void Vocabulary::load(const cv::FileStorage& fs,const std::string& name)
 {
-	m_words.clear();
-	m_nodes.clear();
+	words_.clear();
+	nodes_.clear();
 
   	cv::FileNode fvoc = fs[name];
-  	m_k = (int)fvoc["k"];
-  	m_L = (int)fvoc["L"];
-  	m_scoring = (ScoringType)((int)fvoc["scoringType"]);
-  	m_weighting = (WeightingType)((int)fvoc["weightingType"]);
+  	branching_factor_ = (int)fvoc["k"];
+  	depth_levels_ = (int)fvoc["L"];
+  	scoring_type_ = (ScoringType)((int)fvoc["scoringType"]);
+  	weighting_type_ = (WeightingType)((int)fvoc["weightingType"]);
 
-  	createScoringObject();
+  	create_scoring_object();
 	
 	// nodes
   	cv::FileNode fn = fvoc["nodes"];
-	m_nodes.resize(fn.size() + 1);
-  	m_nodes[0].id = 0;
+	nodes_.resize(fn.size() + 1);
+  	nodes_[0].id = 0;
 	
 	for(unsigned int i = 0; i < fn.size(); i++){
-		NodeId nid = (int)fn[i]["nodeId"];
-    	NodeId pid = (int)fn[i]["parentId"];
-    	WordValue weight = (WordValue)fn[i]["weight"];
+		unsigned int nid = (int)fn[i]["nodeId"];
+    	unsigned int pid = (int)fn[i]["parentId"];
+    	double weight = (double)fn[i]["weight"];
     	std::string d = (std::string)fn[i]["descriptor"];
 
-    	m_nodes[nid].id = nid;
-    	m_nodes[nid].parent = pid;
-    	m_nodes[nid].weight = weight;
-    	m_nodes[pid].children.push_back(nid);
+    	nodes_[nid].id = nid;
+    	nodes_[nid].parent = pid;
+    	nodes_[nid].weight = weight;
+    	nodes_[pid].children.push_back(nid);
 
-		DescriptorsManipulator::fromString(m_nodes[nid].descriptor,d);
+		DescriptorsManipulator::fromString(nodes_[nid].descriptor,d);
   	}
 	
 	// words
   	fn = fvoc["words"];
-	m_words.resize(fn.size());
+	words_.resize(fn.size());
 	for(unsigned int i = 0; i < fn.size(); i++){
-		NodeId wid = (int)fn[i]["wordId"];
-    	NodeId nid = (int)fn[i]["nodeId"];
+		unsigned int wid = (int)fn[i]["wordId"];
+    	unsigned int nid = (int)fn[i]["nodeId"];
 
-    	m_nodes[nid].word_id = wid;
-    	m_words[wid] = &m_nodes[nid];
+    	nodes_[nid].word_id = wid;
+    	words_[wid] = &nodes_[nid];
   	}
 }
 
-int Vocabulary::stopWords(double minWeight)
+int Vocabulary::stop_words(double weight_min)
 {
 	int c = 0;
-	for(auto wit = m_words.begin(); wit != m_words.end(); wit++){
-		if((*wit)->weight < minWeight){
+	for(auto wit = words_.begin(); wit != words_.end(); wit++){
+		if((*wit)->weight < weight_min){
 			++c;
       		(*wit)->weight = 0;
     	}
@@ -521,67 +523,55 @@ int Vocabulary::stopWords(double minWeight)
   	return c;
 }
 
-int Vocabulary::getDescritorSize() const
-{
-	if(m_words.size() == 0) return -1;
-    else return m_words[0]->descriptor.cols;
-}
-
-int Vocabulary::getDescritorType() const
-{
-	if(m_words.size() == 0) return -1;
-    else return m_words[0]->descriptor.type();
-}
-
-void Vocabulary::toStream(std::ostream& out_str, bool compressed) const
+void Vocabulary::to_stream(std::ostream& out_str, bool compressed) const
 {
 	uint64_t sig = 88877711233;	// magic number describing the file
     out_str.write((char*)&sig,sizeof(sig));
     out_str.write((char*)&compressed,sizeof(compressed));
     
-	uint32_t nnodes = m_nodes.size();
+	uint32_t nnodes = nodes_.size();
     out_str.write((char*)&nnodes,sizeof(nnodes));
     if(nnodes == 0) return;
 
     // save everything to a stream
     std::stringstream aux_stream;
-    aux_stream.write((char*)&m_k,sizeof(m_k));
-    aux_stream.write((char*)&m_L,sizeof(m_L));
-    aux_stream.write((char*)&m_scoring,sizeof(m_scoring));
-    aux_stream.write((char*)&m_weighting,sizeof(m_weighting));
+    aux_stream.write((char*)&branching_factor_,sizeof(branching_factor_));
+    aux_stream.write((char*)&depth_levels_,sizeof(depth_levels_));
+    aux_stream.write((char*)&scoring_type_,sizeof(scoring_type_));
+    aux_stream.write((char*)&weighting_type_,sizeof(weighting_type_));
     
 	// nodes
-    std::vector<NodeId> parents={0};	// root
+    std::vector<unsigned int> parents={0};	// root
     while(!parents.empty()){
-		NodeId pid = parents.back();
+		unsigned int pid = parents.back();
         parents.pop_back();
         
-		const Node& parent = m_nodes[pid];
+		const Node& parent = nodes_[pid];
         for(auto pit : parent.children){
-			const Node& child = m_nodes[pit];
+			const Node& child = nodes_[pit];
             aux_stream.write((char*)&child.id,sizeof(child.id));
             aux_stream.write((char*)&pid,sizeof(pid));
             aux_stream.write((char*)&child.weight,sizeof(child.weight));
 			DescriptorsManipulator::toStream(child.descriptor,aux_stream);
             
 			// add to parent list
-            if(!child.isLeaf()) parents.emplace_back(pit);
+            if(!child.is_leaf()) parents.emplace_back(pit);
         }
     }
 
     // words
-    uint32_t m_words_size = m_words.size();
+    uint32_t m_words_size = words_.size();
     aux_stream.write((char*)&m_words_size,sizeof(m_words_size));
-    for(auto wit = m_words.begin(); wit != m_words.end(); wit++){
-		WordId id = wit - m_words.begin();
+    for(auto wit = words_.begin(); wit != words_.end(); wit++){
+		unsigned int id = wit - words_.begin();
         aux_stream.write((char*)&id,sizeof(id));
         aux_stream.write((char*)&(*wit)->id,sizeof((*wit)->id));
     }
 
     // now, decide if compress or not
     if(compressed){
-		qlz_state_compress  state_compress;
-        memset(&state_compress,0,sizeof(qlz_state_compress));
+		QlzStateCompress state_compress;
+        memset(&state_compress,0,sizeof(QlzStateCompress));
         
 		// Create output buffer
         int chunkSize = 10000;
@@ -610,10 +600,10 @@ void Vocabulary::toStream(std::ostream& out_str, bool compressed) const
     else out_str<<aux_stream.rdbuf();
 }
 
-void Vocabulary::fromStream(std::istream& str)
+void Vocabulary::from_stream(std::istream& str)
 {
-	m_words.clear();
-    m_nodes.clear();
+	words_.clear();
+    nodes_.clear();
 
     uint64_t sig = 0;	// magic number describing the file
     str.read((char*)&sig,sizeof(sig));
@@ -629,8 +619,8 @@ void Vocabulary::fromStream(std::istream& str)
 	std::stringstream decompressed_stream;
     std::istream *_used_str=0;
     if(compressed){
-		qlz_state_decompress state_decompress;
-        memset(&state_decompress,0,sizeof(qlz_state_decompress));
+		QlzStateDecompress state_decompress;
+        memset(&state_decompress,0,sizeof(QlzStateDecompress));
         
 		int chunkSize = 10000;
         std::vector<char> decompressed(chunkSize);
@@ -652,74 +642,75 @@ void Vocabulary::fromStream(std::istream& str)
         _used_str=&str;
     }
 
-    _used_str->read((char*)&m_k,sizeof(m_k));
-    _used_str->read((char*)&m_L,sizeof(m_L));
-    _used_str->read((char*)&m_scoring,sizeof(m_scoring));
-    _used_str->read((char*)&m_weighting,sizeof(m_weighting));
+    _used_str->read((char*)&branching_factor_,sizeof(branching_factor_));
+    _used_str->read((char*)&depth_levels_,sizeof(depth_levels_));
+    _used_str->read((char*)&scoring_object_,sizeof(scoring_object_));
+    _used_str->read((char*)&weighting_type_,sizeof(weighting_type_));
 
-    createScoringObject();
-    m_nodes.resize(nnodes);
-    m_nodes[0].id = 0;
+    create_scoring_object();
+    nodes_.resize(nnodes);
+    nodes_[0].id = 0;
 
-    for(size_t i = 1; i < m_nodes.size(); i++){
-		NodeId nid;
-        _used_str->read((char*)&nid,sizeof(NodeId));
+    for(size_t i = 1; i < nodes_.size(); i++){
+		unsigned int nid;
+        _used_str->read((char*)&nid,sizeof(unsigned int));
         
-		Node& child = m_nodes[nid];
+		Node& child = nodes_[nid];
         child.id=nid;
         _used_str->read((char*)&child.parent,sizeof(child.parent));
         _used_str->read((char*)&child.weight,sizeof(child.weight));
         
 		DescriptorsManipulator::fromStream(child.descriptor,*_used_str);
-        m_nodes[child.parent].children.emplace_back(child.id);
+        nodes_[child.parent].children.emplace_back(child.id);
     }
     
 	// words
     uint32_t m_words_size;
     _used_str->read((char*)&m_words_size,sizeof(m_words_size));
-    m_words.resize(m_words_size);
-    for(unsigned int i = 0; i < m_words.size(); i++){
-        WordId wid;NodeId nid;
+    words_.resize(m_words_size);
+    for(unsigned int i = 0; i < words_.size(); i++){
+        unsigned int wid;
+		unsigned int nid;
         _used_str->read((char*)&wid,sizeof(wid));
         _used_str->read((char*)&nid,sizeof(nid));
-        m_nodes[nid].word_id = wid;
-        m_words[wid] = &m_nodes[nid];
+        nodes_[nid].word_id = wid;
+        words_[wid] = &nodes_[nid];
     }
 }
 
-void Vocabulary::createScoringObject()
+void Vocabulary::create_scoring_object()
 {
-	delete m_scoring_object;
-  	m_scoring_object = NULL;
-	switch(m_scoring)
+	delete scoring_object_;
+	scoring_object_ = NULL;
+	switch(scoring_type_)
 	{
 		case L1_NORM:
-			m_scoring_object = new L1Scoring;
+			scoring_object_ = new L1Scoring;
       		break;
 
     	case L2_NORM:
-     	 	m_scoring_object = new L2Scoring;
+     	 	scoring_object_ = new L2Scoring;
       		break;
 
     	case CHI_SQUARE:
-      		m_scoring_object = new ChiSquareScoring;
+      		scoring_object_ = new ChiSquareScoring;
       		break;
 
     	case KL:
-      		m_scoring_object = new KLScoring;
+      		scoring_object_ = new KLScoring;
       		break;
 
     	case BHATTACHARYYA:
-      		m_scoring_object = new BhattacharyyaScoring;
+      		scoring_object_ = new BhattacharyyaScoring;
       		break;
 
     	case DOT_PRODUCT:
-      		m_scoring_object = new DotProductScoring;
+      		scoring_object_ = new DotProductScoring;
       		break;
   	}
 }
 
-void Vocabulary::getFeatures(const std::vector<std::vector<cv::Mat>>& training_features,std::vector<cv::Mat>& features) const
+void Vocabulary::get_features(const std::vector<std::vector<cv::Mat>>& training_features,std::vector<cv::Mat>& features) const
 {
 	features.resize(0);
   	for(size_t i = 0; i < training_features.size(); i++){
@@ -729,23 +720,23 @@ void Vocabulary::getFeatures(const std::vector<std::vector<cv::Mat>>& training_f
 	}
 }
 
-void Vocabulary::transform(const cv::Mat& feature,WordId& word_id,WordValue& weight,NodeId* nid,int levelsup) const
+void Vocabulary::transform(const cv::Mat& feature,unsigned int& word_id,double& weight,unsigned int* nid,int levelsup) const
 {
 	// propagate the feature down the tree
 	
 	// level at which the node must be stored in nid, if given
-  	const int nid_level = m_L - levelsup;
+  	const int nid_level = depth_levels_ - levelsup;
   	if(nid_level <= 0 && nid != NULL) *nid = 0;	// root
 
-  	NodeId final_id = 0;	// root
+  	unsigned int final_id = 0;	// root
   	int current_level = 0;
 	
 	do{
 		++current_level;
-    	auto const  &nodes = m_nodes[final_id].children;
+    	auto const  &nodes = nodes_[final_id].children;
     	double best_d = std::numeric_limits<double>::max();
 		for(const auto &id : nodes){
-			double d = DescriptorsManipulator::distance(feature,m_nodes[id].descriptor);
+			double d = DescriptorsManipulator::distance(feature,nodes_[id].descriptor);
 			if(d < best_d){
 				best_d = d;
 				final_id = id;
@@ -753,26 +744,26 @@ void Vocabulary::transform(const cv::Mat& feature,WordId& word_id,WordValue& wei
     	}
 		
 		if(nid != NULL && current_level == nid_level) *nid = final_id;
-	}while( !m_nodes[final_id].isLeaf() );
+	}while(!nodes_[final_id].is_leaf());
 	
 	// turn node id into word id
-	word_id = m_nodes[final_id].word_id;
-  	weight = m_nodes[final_id].weight;
+	word_id = nodes_[final_id].word_id;
+  	weight = nodes_[final_id].weight;
 }
 
-void Vocabulary::transform(const cv::Mat& feature,WordId& word_id,WordValue& weight) const
+void Vocabulary::transform(const cv::Mat& feature,unsigned int& word_id,double& weight) const
 {
 	// propagate the feature down the tree
 	
-	NodeId final_id = 0;	// root
+	unsigned int final_id = 0;	// root
 	if (feature.type() == CV_8U){
 		do{
-			auto const& nodes = m_nodes[final_id].children;
+			auto const& nodes = nodes_[final_id].children;
 			uint64_t best_d = std::numeric_limits<uint64_t>::max();
           	int idx=0,bestidx=0;
            	for(const auto &id : nodes){
 				// compute distance	
-				uint64_t dist = DescriptorsManipulator::distance_8uc1(feature,m_nodes[id].descriptor);
+				uint64_t dist = DescriptorsManipulator::distance_8uc1(feature,nodes_[id].descriptor);
               	if(dist < best_d){
 					best_d = dist;
                   	final_id = id;
@@ -780,16 +771,16 @@ void Vocabulary::transform(const cv::Mat& feature,WordId& word_id,WordValue& wei
               	}
               	idx++;
           	}
-		}while(!m_nodes[final_id].isLeaf());
+		}while(!nodes_[final_id].is_leaf());
    	}
 	else{
 		do{
-			auto const& nodes = m_nodes[final_id].children;
+			auto const& nodes = nodes_[final_id].children;
 		  	uint64_t best_d = std::numeric_limits<uint64_t>::max();
 		  	int idx = 0, bestidx = 0;
 		  	for(const auto &id : nodes){
 				// compute distance
-				uint64_t dist = DescriptorsManipulator::distance(feature, m_nodes[id].descriptor);
+				uint64_t dist = DescriptorsManipulator::distance(feature,nodes_[id].descriptor);
 				if(dist < best_d){
 					best_d = dist;
 				  	final_id = id;
@@ -797,31 +788,31 @@ void Vocabulary::transform(const cv::Mat& feature,WordId& word_id,WordValue& wei
 			  	}
 			  	idx++;
 		  	}
-	  	}while(!m_nodes[final_id].isLeaf());
+	  	}while(!nodes_[final_id].is_leaf());
   	}
 	
 	// turn node id into word id
-  	word_id = m_nodes[final_id].word_id;
-  	weight = m_nodes[final_id].weight;
+  	word_id = nodes_[final_id].word_id;
+  	weight = nodes_[final_id].weight;
 }
 
-void Vocabulary::transform(const cv::Mat& feature,WordId &id) const
+void Vocabulary::transform(const cv::Mat& feature,unsigned int& id) const
 {
-	WordValue weight;
+	double weight;
 	transform(feature,id,weight);
 }
 
-void Vocabulary::HKmeansStep(NodeId parent_id,const std::vector<cv::Mat>& descriptors,int current_level)
+void Vocabulary::HK_means_step(unsigned int parent_id,const std::vector<cv::Mat>& descriptors,int current_level)
 {
 	if(descriptors.empty()) return;
 
     // features associated to each cluster
     std::vector<cv::Mat> clusters;
     std::vector<std::vector<unsigned int>> groups;
-    clusters.reserve(m_k);
-    groups.reserve(m_k);
+    clusters.reserve(branching_factor_);
+    groups.reserve(branching_factor_);
 	
-	if((int)descriptors.size() <= m_k){
+	if((int)descriptors.size() <= branching_factor_){
         // trivial case: one cluster per feature
         groups.resize(descriptors.size());
         for(unsigned int i = 0; i < descriptors.size(); i++){
@@ -841,7 +832,7 @@ void Vocabulary::HKmeansStep(NodeId parent_id,const std::vector<cv::Mat>& descri
             // 1. Calculate clusters
             if(first_time){
                 // random sample
-                initiateClusters(descriptors,clusters);
+                initiate_clusters(descriptors,clusters);
             }
             else{
                 // calculate cluster centres
@@ -900,19 +891,19 @@ void Vocabulary::HKmeansStep(NodeId parent_id,const std::vector<cv::Mat>& descri
 
     // create nodes
     for(unsigned int i = 0; i < clusters.size(); i++){
-        NodeId id = m_nodes.size();
-        m_nodes.emplace_back(Node(id));
-        m_nodes.back().descriptor = clusters[i];
-        m_nodes.back().parent = parent_id;
-        m_nodes[parent_id].children.emplace_back(id);
+		unsigned int id = nodes_.size();
+        nodes_.emplace_back(Node(id));
+        nodes_.back().descriptor = clusters[i];
+        nodes_.back().parent = parent_id;
+        nodes_[parent_id].children.emplace_back(id);
     }
 
     // go on with the next level
-    if(current_level < m_L){
+    if(current_level < depth_levels_){
         // iterate again with the resulting clusters
-        const std::vector<NodeId>& children_ids = m_nodes[parent_id].children;
+        const std::vector<unsigned int>& children_ids = nodes_[parent_id].children;
         for(unsigned int i = 0; i < clusters.size(); i++){
-            NodeId id = children_ids[i];
+            unsigned int id = children_ids[i];
 
             std::vector<cv::Mat> child_features;
             child_features.reserve(groups[i].size());
@@ -922,20 +913,20 @@ void Vocabulary::HKmeansStep(NodeId parent_id,const std::vector<cv::Mat>& descri
                 child_features.emplace_back(descriptors[*vit]);
             }
 
-            if(child_features.size() > 1) HKmeansStep(id,child_features,current_level + 1);   
+            if(child_features.size() > 1) HK_means_step(id,child_features,current_level + 1);   
         }
     }
 }
 
-void Vocabulary::initiateClusters(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const
+void Vocabulary::initiate_clusters(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const
 {
-	initiateClustersKMpp(descriptors, clusters);
+	initiate_clusters_KMpp(descriptors, clusters);
 }
 
-void Vocabulary::initiateClustersKMpp(const std::vector<cv::Mat>& pfeatures,std::vector<cv::Mat>& clusters) const
+void Vocabulary::initiate_clusters_KMpp(const std::vector<cv::Mat>& pfeatures,std::vector<cv::Mat>& clusters) const
 {
 	clusters.resize(0);
-  	clusters.reserve(m_k);
+  	clusters.reserve(branching_factor_);
   	std::vector<double> min_dists(pfeatures.size(), std::numeric_limits<double>::max());
 
 	// 1. Choose one center uniformly at random from among the data points.
@@ -950,7 +941,7 @@ void Vocabulary::initiateClustersKMpp(const std::vector<cv::Mat>& pfeatures,std:
 		*dit = DescriptorsManipulator::distance((*fit),clusters.back());
   	}
 
-  	while((int)clusters.size() < m_k){
+  	while((int)clusters.size() < branching_factor_){
 		// 2. For each data point x, compute D(x), 
 		//    the distance between x and the nearest center that has already been chosen.
 		dit = min_dists.begin();
@@ -984,38 +975,38 @@ void Vocabulary::initiateClustersKMpp(const std::vector<cv::Mat>& pfeatures,std:
   	}
 }
 
-void Vocabulary::createWords()
+void Vocabulary::create_words()
 {
-	m_words.resize(0);
-	if(!m_nodes.empty()){
-		m_words.reserve((int)std::pow((double)m_k,(double)m_L) );
+	words_.resize(0);
+	if(!nodes_.empty()){
+		words_.reserve((int)std::pow((double)branching_factor_,(double)depth_levels_));
 		
-		auto nit = m_nodes.begin();	// ignore root
-    	for(++nit; nit != m_nodes.end(); nit++){
-			if(nit->isLeaf()){
-				nit->word_id = m_words.size();
-				m_words.emplace_back( &(*nit) );
+		auto nit = nodes_.begin();	// ignore root
+    	for(++nit; nit != nodes_.end(); nit++){
+			if(nit->is_leaf()){
+				nit->word_id = words_.size();
+				words_.emplace_back( &(*nit) );
       		}
     	}
   	}
 }
 
-void Vocabulary::setNodeWeights(const std::vector<std::vector<cv::Mat>>& training_features)
+void Vocabulary::set_node_weights(const std::vector<std::vector<cv::Mat>>& training_features)
 {
-	const unsigned int NWords = m_words.size();
+	const unsigned int NWords = words_.size();
 	const unsigned int NDocs = training_features.size();
-	if(m_weighting == TF || m_weighting == BINARY){
+	if(weighting_type_ == TF || weighting_type_ == BINARY){
 		// idf part must be 1 always
-    	for(unsigned int i = 0; i < NWords; i++) m_words[i]->weight = 1;
+    	for(unsigned int i = 0; i < NWords; i++) words_[i]->weight = 1;
   	}
-  	else if(m_weighting == IDF || m_weighting == TF_IDF){
+  	else if(weighting_type_ == IDF || weighting_type_ == TF_IDF){
 		// IDF and TF-IDF: we calculte the idf path now
 		std::vector<unsigned int> Ni(NWords, 0);
 		std::vector<bool> counted(NWords, false);
 		for(auto mit = training_features.begin(); mit != training_features.end(); mit++){
 			std::fill(counted.begin(),counted.end(),false);
 			for(auto fit = mit->begin(); fit < mit->end(); fit++){
-				WordId word_id;
+				unsigned int word_id;
         		transform(*fit,word_id);
 				
 				if(!counted[word_id]){
@@ -1028,13 +1019,13 @@ void Vocabulary::setNodeWeights(const std::vector<std::vector<cv::Mat>>& trainin
 		// set ln(N/Ni)
 		for(unsigned int i = 0; i < NWords; i++){
 			if(Ni[i] > 0){
-				m_words[i]->weight = std::log((double)NDocs/(double)Ni[i]);
+				words_[i]->weight = std::log((double)NDocs/(double)Ni[i]);
       		}
     	}
   	}
 }
 
-void Vocabulary::load_fromtxt(const std::string& file_name)
+void Vocabulary::load_from_txt(const std::string& file_name)
 {
 	std::ifstream ifile(file_name);
     if(!ifile) throw std::runtime_error("Vocabulary:: load_fromtxt  Could not open file for reading: " + file_name);
@@ -1044,22 +1035,24 @@ void Vocabulary::load_fromtxt(const std::string& file_name)
 		std::string str;
 		getline(ifile,str);
 		std::stringstream ss(str);
-    	ss >> m_k >> m_L >> n1 >> n2;
+    	ss >> branching_factor_ >> depth_levels_ >> n1 >> n2;
     }
 
-    if(m_k < 0 || m_k > 20 || m_L < 1 || m_L > 10 || n1 < 0 || n1 > 5 || n2 < 0 || n2 > 3){
+    if(branching_factor_ < 0 || branching_factor_ > 20 || 
+	   depth_levels_ < 1 || depth_levels_ > 10 || 
+	   n1 < 0 || n1 > 5 || n2 < 0 || n2 > 3){
 		throw std::runtime_error( "Vocabulary loading failure: This is not a correct text file!" );
 	}
-    m_scoring = (ScoringType)n1;
-    m_weighting = (WeightingType)n2;
-    createScoringObject();
+    scoring_type_ = (ScoringType)n1;
+    weighting_type_ = (WeightingType)n2;
+    create_scoring_object();
     
 	// nodes
-	int expected_nodes = (int)((std::pow((double)m_k,(double)m_L + 1) - 1)/(m_k - 1));
-    m_nodes.reserve(expected_nodes);
-    m_words.reserve(pow((double)m_k,(double)m_L + 1));
-	m_nodes.resize(1);
-    m_nodes[0].id = 0;
+	int expected_nodes = (int)((std::pow((double)branching_factor_,(double)depth_levels_ + 1) - 1)/(branching_factor_ - 1));
+    nodes_.reserve(expected_nodes);
+    words_.reserve(std::pow((double)branching_factor_,(double)depth_levels_ + 1));
+	nodes_.resize(1);
+    nodes_[0].id = 0;
 
     int counter=0;
     while(!ifile.eof()){
@@ -1069,14 +1062,14 @@ void Vocabulary::load_fromtxt(const std::string& file_name)
 		if(snode.size() == 0) break;
         
 		std::stringstream ssnode(snode);
-		int nid = m_nodes.size();
-		m_nodes.resize(m_nodes.size() + 1);
-        m_nodes[nid].id = nid;
+		int nid = nodes_.size();
+		nodes_.resize(nodes_.size() + 1);
+        nodes_[nid].id = nid;
 
         int pid ;
         ssnode >> pid;
-        m_nodes[nid].parent = pid;
-        m_nodes[pid].children.emplace_back(nid);
+        nodes_[nid].parent = pid;
+        nodes_[pid].children.emplace_back(nid);
 
         int nIsLeaf;
         ssnode >> nIsLeaf;
@@ -1089,93 +1082,34 @@ void Vocabulary::load_fromtxt(const std::string& file_name)
         while(ssnode >> d) data.emplace_back(d);
         
 		// the weight is the last
-        m_nodes[nid].weight=data.back();
+        nodes_[nid].weight = data.back();
         data.pop_back();	// remove
         
 		// the rest, to the descriptor
-        m_nodes[nid].descriptor.create(1,data.size(),CV_8UC1);
-        auto ptr = m_nodes[nid].descriptor.ptr<uchar>(0);
+        nodes_[nid].descriptor.create(1,data.size(),CV_8UC1);
+        auto ptr = nodes_[nid].descriptor.ptr<uchar>(0);
         for(auto d : data) *ptr++ = d;
 
         if(nIsLeaf > 0){
-			int wid = m_words.size();
-            m_words.resize(wid + 1);
+			int wid = words_.size();
+            words_.resize(wid + 1);
 			
-			m_nodes[nid].word_id = wid;
-            m_words[wid] = &m_nodes[nid];
+			nodes_[nid].word_id = wid;
+            words_[wid] = &nodes_[nid];
         }
         else{
-			m_nodes[nid].children.reserve(m_k);
+			nodes_[nid].children.reserve(branching_factor_);
         }
     }
 }
 
-/*
-std::ostream& operator<<(std::ostream& os,const Vocabulary& voc)
-{
-	os << "Vocabulary: k = " << voc.getBranchingFactor()
-       << ", L = " << voc.getDepthLevels()
-       << ", Weighting = ";
-	
-	switch(voc.getWeightingType())
-  	{
-		case TF_IDF: 
-			os << "tf-idf"; 
-			break;
-
-    	case TF: 
-			os << "tf"; 
-			break;
-
-    	case IDF: 
-			os << "idf"; 
-			break;
-    	
-		case BINARY: 
-			os << "binary"; 
-			break;
-  	}
-
-  	os << ", Scoring = ";
-  	switch(voc.getScoringType())
-	{
-    	case L1_NORM: 
-			os << "L1-norm"; 
-			break;
-
-    	case L2_NORM: 
-			os << "L2-norm"; 
-			break;
-    	
-		case CHI_SQUARE: 
-			os << "Chi square distance"; 
-			break;
-    	
-		case KL: 
-			os << "KL-divergence"; 
-			break;
-    	
-		case BHATTACHARYYA: 
-			os << "Bhattacharyya coefficient";
-			break;
-    	
-		case DOT_PRODUCT: 
-			os << "Dot product"; 
-			break;
-  	}
-	
-	os << ", Number of words = " << voc.size();
-	return os;
-}
-*/
-
 void Vocabulary::get_info()
 {
-	std::cout << "k = " << getBranchingFactor() << std::endl;
-	std::cout << "L = " << getDepthLevels() << std::endl;
+	std::cout << "k = " << get_branching_factor() << std::endl;
+	std::cout << "L = " << get_depth_levels() << std::endl;
 	
 	std::cout << "Weighting = ";
-	switch(getWeightingType())
+	switch(get_weighting_type())
 	{
 		case TF_IDF: 
 			std::cout << "tf-idf" << std::endl;
@@ -1195,7 +1129,7 @@ void Vocabulary::get_info()
   	}
 
 	std::cout << "Scoring = ";
-	switch(getDescritorType())
+	switch(get_descritor_type())
 	{
 		case L1_NORM: 
 			std::cout << "L1-norm" << std::endl;
@@ -1222,7 +1156,7 @@ void Vocabulary::get_info()
 			break;
   	}
 	
-	std::cout << "Number of words = " << size() << std::endl;
+	std::cout << "Number of words = " << get_words_size() << std::endl;
 	std::cout << std::endl;
 
 }

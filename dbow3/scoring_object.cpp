@@ -15,8 +15,8 @@ double L1Scoring::score(const BowVector& v1,const BowVector& v2) const
   
   	double score = 0;
 	while(v1_it != v1_end && v2_it != v2_end){
-		const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+		const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
     
     	if(v1_it->first == v2_it->first){
 			score += std::fabs(vi - wi) - std::fabs(vi) - std::fabs(wi);
@@ -50,8 +50,8 @@ double L2Scoring::score(const BowVector& v1,const BowVector& v2) const
   	double score = 0;
   
   	while(v1_it != v1_end && v2_it != v2_end){
-		const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+		const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
     
     	if(v1_it->first == v2_it->first){
 			score += vi * wi;
@@ -92,8 +92,8 @@ double ChiSquareScoring::score(const BowVector& v1,const BowVector& v2) const
   
   	// all the items are taken into account
 	while(v1_it != v1_end && v2_it != v2_end){
-		const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+		const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
 		
 		if(v1_it->first == v2_it->first){
 			if(vi + wi != 0.0) score += vi*wi/(vi + wi);
@@ -131,8 +131,8 @@ double KLScoring::score(const BowVector& v1,const BowVector& v2) const
 	
 	// all the items or v are taken into account
 	while(v1_it != v1_end && v2_it != v2_end){
-    	const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+    	const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
     
     	if(v1_it->first == v2_it->first){
 			if(vi != 0 && wi != 0) score += vi*std::log(vi/wi);
@@ -171,8 +171,8 @@ double BhattacharyyaScoring::score(const BowVector& v1,const BowVector& v2) cons
   	double score = 0;
   
   	while(v1_it != v1_end && v2_it != v2_end){
-		const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+		const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
     
     	if(v1_it->first == v2_it->first){
 			score += std::sqrt(vi * wi);
@@ -204,8 +204,8 @@ double DotProductScoring::score(const BowVector& v1,const BowVector& v2) const
   
   	double score = 0;
 	while(v1_it != v1_end && v2_it != v2_end){
-    	const WordValue& vi = v1_it->second;
-    	const WordValue& wi = v2_it->second;
+    	const double& vi = v1_it->second;
+    	const double& wi = v2_it->second;
     
     	if(v1_it->first == v2_it->first){
 			score += vi*wi;

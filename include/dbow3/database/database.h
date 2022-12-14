@@ -23,47 +23,48 @@ const int MIN_COMMON_WORDS = 5;
 class Database
 {
 public:
-	explicit Database(bool use_di = true,int di_levels = 0);
-	explicit Database(const Vocabulary& voc,bool use_di = true,int di_levels = 0);
-	Database(const Database& db);
+	explicit Database(bool use_direct_index = true,int levels = 0);
+	explicit Database(const Vocabulary& vocabulary,bool use_direct_index = true,int levels = 0);
+	Database(const Database& database);
 	Database(const std::string& file_name);
 	Database(const char* file_name);
 
   	virtual ~Database();
-	Database& operator=(const Database& db);
+	Database& operator=(const Database& database);
 
-  	void setVocabulary(const Vocabulary& voc);
-	void setVocabulary(const Vocabulary& voc,bool use_di,int di_levels = 0);
-	
-	const Vocabulary* getVocabulary() const;
-	void allocate(int nd = 0,int ni = 0);
-	
+	// set
+  	void set_vocabulary(const Vocabulary& vocabulary);
+	void set_vocabulary(const Vocabulary& vocabulary,
+	                    bool use_direct_index,int levels = 0);	
 	// add
 	unsigned int add(const cv::Mat& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
 	unsigned int add(const std::vector<cv::Mat>& features,BowVector* bowvec = NULL,FeatureVector* fvec = NULL);
 	unsigned int add(const BowVector& vec,const FeatureVector& fec = FeatureVector());
 	
-	void clear();
-	unsigned int size() const{  return m_nentries;}
-	bool usingDirectIndex() const{  return m_use_di;}
-	int getDirectIndexLevels() const{  return m_dilevels;}
+	// utils
+	const Vocabulary* get_vocabulary() const;
+	void allocate(int nd = 0,int ni = 0);
+	void clear_database();
+	unsigned int entries_size() const { return entries_; }
+	bool using_direct_index() const { return use_direct_index_; }
+	int get_direct_index_levels() const { return levels_; }
+	const FeatureVector& retrieve_features(unsigned int id) const;
 
+	// query
 	void query(const cv::Mat& features,QueryResults& ret,int max_results = 1,int max_id = -1) const;
   	void query(const std::vector<cv::Mat>& features,QueryResults& ret,int max_results = 1,int max_id = -1) const;
 	void query(const BowVector& vec,QueryResults& ret,int max_results = 1,int max_id = -1) const;
 
-  	const FeatureVector& retrieveFeatures(unsigned int id) const;
-
+	// save
   	void save(const std::string& file_name) const;
 	virtual void save(cv::FileStorage& fs,const std::string& name = "database") const;
 
+	// load
 	void load(const std::string& file_name);
 	virtual void load(const cv::FileStorage& fs,const std::string& name = "database");
 	
 	// for debug
 	void get_info();
-
-	// friend std::ostream& operator<<(std::ostream os,const Database& db);
 
 protected:
 	// Query with L1 scoring
@@ -85,23 +86,12 @@ protected:
   	void queryDotProduct(const BowVector& vec,QueryResults& ret,int max_results,int max_id) const;
 	
 protected:
-	// Associated vocabulary
-  	Vocabulary *m_voc;
-	
-	// Flag to use direct index
-  	bool m_use_di;
-	
-	// Levels to go up the vocabulary tree to select nodes to store in the direct index
-  	int m_dilevels;
-	
-	// Inverted file (must have size() == |words|)
-  	std::vector<std::list<IFItem>> m_ifile;
-	
-	// Direct file (resized for allocation)
-  	std::vector<FeatureVector> m_dfile;
-	
-	// Number of valid entries in m_dfile
-  	int m_nentries;  
+  	Vocabulary* vocabulary_;						// Associated vocabulary
+	std::vector<std::list<IFItem>> inverted_file_;	// Inverted file
+	std::vector<FeatureVector> direct_file_;		// Direct file
+  	bool use_direct_index_;							// Flag to use direct index
+  	int levels_;									// Levels to go up the vocabulary tree to select nodes to store in the direct index
+  	int entries_;  									// Number of valid entries in m_dfile
 };
 }	// namespace dbow3
 

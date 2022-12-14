@@ -17,142 +17,109 @@
 #include "dbow3/scoring_object/scoring_object.h"
 #include "dbow3/descriptors_manipulator/descriptors_manipulator.h"
 #include "dbow3/quicklz/quicklz.h"
+#include "dbow3/vocabulary/node.h"
 
 namespace dbow3 
 {
 class Vocabulary
 {		
 public:
-	Vocabulary(int k = 10,int L = 5,WeightingType weighting = TF_IDF,ScoringType scoring = L1_NORM);
+	Vocabulary(int branching_factor = 10,int depth_levels = 5,
+	           WeightingType weighting_type = TF_IDF,
+			   ScoringType scoring_type = L1_NORM);
 	Vocabulary(const std::string& file_name);
 	Vocabulary(const char* file_name);
-  	Vocabulary(std::istream& file_name);
-	Vocabulary(const Vocabulary& voc);
+  	Vocabulary(std::istream& stream);
+	Vocabulary(const Vocabulary& vocabulary);
 	
 	virtual ~Vocabulary();
-	Vocabulary& operator=(const Vocabulary& voc);
+	Vocabulary& operator=(const Vocabulary& vocabulary);
 
 	// create
 	virtual void create(const std::vector<cv::Mat>& training_features);
   	virtual void create(const std::vector<std::vector<cv::Mat>>& training_features);
-	virtual void create(const std::vector<std::vector<cv::Mat>>& training_features,int k,int L);
-	virtual void create(const std::vector<std::vector<cv::Mat>>& training_features,int k,int L,WeightingType weighting,ScoringType scoring);
+	virtual void create(const std::vector<std::vector<cv::Mat>>& training_features,
+	                    int branching_factor,int depth_levels);
+	virtual void create(const std::vector<std::vector<cv::Mat>>& training_features,
+	                    int branching_factor,int depth_levels,
+						WeightingType weighting_type,ScoringType scoring_type);
 
-  	virtual inline unsigned int size() const;
-	virtual inline bool empty() const;
-	void clear();
+	// utils
+  	virtual inline unsigned int get_words_size() const;
+	virtual inline bool is_empty() const;
+	void clear_vocabulary();
 
 	// transform
 	virtual void transform(const std::vector<cv::Mat>& features,BowVector& v) const;
 	virtual void transform(const cv::Mat& features,BowVector& v) const;
 	virtual void transform(const std::vector<cv::Mat>& features,BowVector& v,FeatureVector& fv,int levelsup) const;
-	virtual WordId transform(const cv::Mat& feature) const;
+	virtual unsigned int transform(const cv::Mat& feature) const;
 	
+	// score
 	double score(const BowVector& a,const BowVector& b) const;
+
+	// get
+	void get_words_from_node(unsigned int node_id,std::vector<unsigned int>& words) const;
+	virtual inline cv::Mat get_word(unsigned int word_id) const;
+	WeightingType get_weighting_type();
+	ScoringType get_scoring_type();
+	virtual unsigned int get_parent_node(unsigned int word_id, int levelsup) const;
+	int get_descritor_size() const;
+  	int get_descritor_type() const;
+	inline int get_branching_factor() const;
+	inline int get_depth_levels() const;
+	float get_effective_levels() const;
+	virtual inline double get_word_weight(unsigned int word_id) const;
+
+	// set
+	inline void set_weighting_type(WeightingType weighting_type);
+ 	void set_scoring_type(ScoringType scoring_type);
 	
-	virtual NodeId getParentNode(WordId wid, int levelsup) const;
-	void getWordsFromNode(NodeId nid,std::vector<WordId>& words) const;
-	inline int getBranchingFactor() const;
-	inline int getDepthLevels() const;
-	float getEffectiveLevels() const;
-	virtual inline cv::Mat getWord(WordId wid) const;
-	virtual inline WordValue getWordWeight(WordId wid) const;
-  	// inline WeightingType getWeightingType();
-	// inline ScoringType getScoringType();
-	WeightingType getWeightingType();
-	ScoringType getScoringType();
-	inline void setWeightingType(WeightingType type);
- 	void setScoringType(ScoringType type);
-  
+	// save
   	void save(const std::string& file_name,bool binary_compressed = true) const;
 	virtual void save(cv::FileStorage& fs,const std::string& name = "vocabulary") const;
+	
+	// load
 	void load(const std::string& file_name);
   	bool load(std::istream& stream);
   	virtual void load(const cv::FileStorage& fs,const std::string& name = "vocabulary");
 
-  	virtual int stopWords(double minWeight);
-  	int getDescritorSize() const;
-  	int getDescritorType() const;
+	// stop
+  	virtual int stop_words(double weight_min);
 
-  	void toStream(std::ostream& str,bool compressed=true) const;
-  	void fromStream(std::istream& str);
+	// stream utils
+  	void to_stream(std::ostream& str,bool compressed=true) const;
+  	void from_stream(std::istream& str);
 
 	// for debug
 	void get_info();
 
 protected:
-	// reference to descriptor
-  	typedef const cv::Mat pDescriptor;
-	
-	// Tree node
-  	struct Node 
-  	{
-		Node() : 
-			id(0), weight(0), parent(0), word_id(0) {}
-
-    	Node(NodeId _id) : 
-			id(_id), weight(0), parent(0), word_id(0) {}
-		
-		inline bool isLeaf() const { return children.empty(); }
-
-		// Node id
-    	NodeId id;
-		
-		// Weight if the node is a word
-    	WordValue weight;
-		
-		// Children 
-    	std::vector<NodeId> children;
-		
-		// Parent node (undefined in case of root)
-    	NodeId parent;
-		
-		// Node descriptor
-    	cv::Mat descriptor;
-		
-		// Word id if the node is a word
-    	WordId word_id;
-  	};
-
-protected:
-	void createScoringObject();
-  	void getFeatures(const std::vector<std::vector<cv::Mat>>& training_features,std::vector<cv::Mat>& features) const;
+	void create_scoring_object();
+  	void get_features(const std::vector<std::vector<cv::Mat>>& training_features,std::vector<cv::Mat>& features) const;
 	
 	// transform
-	virtual void transform(const cv::Mat& feature,WordId& id,WordValue& weight,NodeId* nid,int levelsup = 0) const;
-	virtual void transform(const cv::Mat& feature,WordId& id,WordValue& weight ) const;
-	virtual void transform(const cv::Mat& feature,WordId& id) const;
+	virtual void transform(const cv::Mat& feature,unsigned int& id,double& weight,unsigned int* nid,int levelsup = 0) const;
+	virtual void transform(const cv::Mat& feature,unsigned int& id,double& weight ) const;
+	virtual void transform(const cv::Mat& feature,unsigned int& id) const;
 	
-	void HKmeansStep(NodeId parent_id,const std::vector<cv::Mat>& descriptors,int current_level);
-	virtual void initiateClusters(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const;
-	void initiateClustersKMpp(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const;
+	// clustering
+	void HK_means_step(unsigned int parent_id,const std::vector<cv::Mat>& descriptors,int current_level);
+	virtual void initiate_clusters(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const;
+	void initiate_clusters_KMpp(const std::vector<cv::Mat>& descriptors,std::vector<cv::Mat>& clusters) const;
 	
-	void createWords();
-	void setNodeWeights(const std::vector<std::vector<cv::Mat>>& features);	
-	void load_fromtxt(const std::string& file_name);
-
-	// friend std::ostream& operator<<(std::ostream& os,const Vocabulary& voc);
+	void create_words();
+	void set_node_weights(const std::vector<std::vector<cv::Mat>>& features);	
+	void load_from_txt(const std::string& file_name);
 
 protected:
-	// Branching factor
-  	int m_k;
-	
-	// Depth levels 
-  	int m_L;
-  
-  	// Weighting method
-  	WeightingType m_weighting;
-	
-	// Scoring method
-  	ScoringType m_scoring;
-
-	// Object for computing scores
-  	GeneralScoring* m_scoring_object;
-	
-	// Tree nodes
-  	std::vector<Node> m_nodes;
-	
-	std::vector<Node*> m_words;
+  	int branching_factor_;				// Branching factor
+  	int depth_levels_;					// Depth levels 
+  	WeightingType weighting_type_;		// Weighting method
+  	ScoringType scoring_type_;			// Scoring method
+  	GeneralScoring* scoring_object_;	// Object for computing scores
+  	std::vector<Node> nodes_;			// Tree nodes
+	std::vector<Node*> words_;			// Words of the vocabulary (tree leaves)
 };
 }	// namespace dbow3 
 
