@@ -25,12 +25,6 @@ if(NOT OpenCV_FOUND)
     endif()
 endif()
 
-# CUDA
-find_package(CUDA REQUIRED)
-if(CUDA_FOUND)
-    message("Cuda version: " ${CUDA_VERSION})
-endif()
-
 catkin_package(
     INCLUDE_DIRS include
     ${OpenCV_INCLUDE_DIRS}
@@ -53,14 +47,8 @@ add_library(DBoW SHARED
     dbow3/database.cpp
 )
 
-# dbow3_ros
-add_executable(dbow3_ros src/dbow3_ros.cpp)
-target_link_libraries(dbow3_ros ${catkin_LIBRARIES})
-
 # dbow3_demo
-add_executable(dbow3_demo 
-    src/dbow3_demo.cpp
-)
+add_executable(dbow3_demo src/dbow3_demo.cpp)
 target_link_libraries(dbow3_demo 
     ${catkin_LIBRARIES}
     ${OpenCV_LIBRARIES}

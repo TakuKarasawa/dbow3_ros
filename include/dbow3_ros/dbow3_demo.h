@@ -4,13 +4,14 @@
 // ros
 #include <ros/ros.h>
 
-// OpenCV
+// opencv2
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
 #include "dbow3/vocabulary/vocabulary.h"
 #include "dbow3/database/database.h"
+
 
 namespace dbow3
 {
@@ -39,6 +40,6 @@ private:
     // param
     std::string DIR_PATH_;
 };
-}
+} // namespace dbow3
 
 #endif  // DBOW3_DEMO_H_
